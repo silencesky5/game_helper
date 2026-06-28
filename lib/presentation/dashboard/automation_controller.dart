@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
@@ -30,12 +32,24 @@ import '../../domain/workflow/workflow.dart';
 import '../../domain/workflow/workflow_runtime.dart';
 import '../../infrastructure/logger/desktop_console_logger.dart';
 import '../../infrastructure/storage/local_storage.dart';
+import '../../domain/screenshot/device_screenshot.dart';
 import '../../domain/screenshot/screenshot_repository.dart';
 import '../../domain/vision/vision_config.dart';
 import '../../domain/vision/vision_repository.dart';
 import '../../automation/engine/image_detector.dart';
 import '../../domain/vision/vision_service.dart';
 import 'desktop_console_config.dart';
+
+
+/// GrowStone template debug data shown by the Automation Debug panel.
+class GrowStoneDebugResult {
+  const GrowStoneDebugResult({required this.found, this.confidence, this.rect, this.tapPosition});
+
+  final bool found;
+  final double? confidence;
+  final Rectangle<int>? rect;
+  final Point<int>? tapPosition;
+}
 
 /// Presentation controller for starting the automation pipeline.
 class AutomationController extends ChangeNotifier {
@@ -49,6 +63,10 @@ class AutomationController extends ChangeNotifier {
   List<AutomationSession> _sessions = const <AutomationSession>[];
   final Map<String, Timer> _screenshotTimers = <String, Timer>{};
   final DesktopConsoleConfig _desktopConfig = DesktopConsoleConfig.loadSync();
+  final Random _random = Random();
+  final Map<String, GrowStoneDebugResult> _growStoneDebugResults = <String, GrowStoneDebugResult>{};
+  final Map<String, Scene> _debugScenes = <String, Scene>{};
+  final Set<String> _debugModeDevices = <String>{};
 
   /// Whether an automation run has been started from the dashboard.
   bool get running => _running;
@@ -73,6 +91,12 @@ class AutomationController extends ChangeNotifier {
   PerceptionRepository get perceptionRepository => _automationEngine.context.perceptionRepository;
 
   DecisionRepository get decisionRepository => _automationEngine.context.decisionRepository;
+
+  GrowStoneDebugResult? growStoneDebugFor(String deviceId) => _growStoneDebugResults[deviceId];
+
+  Scene? debugSceneFor(String deviceId) => _debugScenes[deviceId];
+
+  bool debugModeFor(String deviceId) => _debugModeDevices.contains(deviceId);
 
   List<String> get logs {
     final logger = _automationEngine.context.loggerService;
@@ -165,7 +189,9 @@ class AutomationController extends ChangeNotifier {
     switch (result) {
       case Success(:final value):
         _automationEngine.context.screenshotRepository.save(value);
+        final path = await _saveDebugScreenshot(value);
         _automationEngine.context.loggerService.log(LogLevel.info, 'Screenshot Updated: ${session.device.name} (${session.device.id})');
+        _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Screenshot saved: $path');
       case Failure(:final error):
         _automationEngine.context.loggerService.log(LogLevel.error, 'Screenshot Failed: ${session.device.name} (${session.device.id}) ${error.message}');
     }
@@ -199,6 +225,120 @@ class AutomationController extends ChangeNotifier {
       '[Detect Scene] ${session.device.name}\n$report',
     );
     notifyListeners();
+  }
+
+
+  /// Toggles verbose debug logging for a device session.
+  void toggleDebugMode(AutomationSession session, bool enabled) {
+    if (enabled) {
+      _debugModeDevices.add(session.device.id);
+    } else {
+      _debugModeDevices.remove(session.device.id);
+    }
+    _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Debug Mode ${enabled ? 'ON' : 'OFF'}: ${session.device.name}');
+    notifyListeners();
+  }
+
+  /// Detects and displays the current scene for one device.
+  Future<void> detectScene(AutomationSession session) async {
+    final scene = await const ImageDetector().detectScene();
+    _debugScenes[session.device.id] = scene;
+    _replaceSession(session.id, session.copyWith(currentScene: _sceneLabel(scene)));
+    _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Detect Scene ${session.device.name}: ${_sceneLabel(scene)}');
+  }
+
+  /// Detects the GrowStone icon and records rectangle/tap preview details.
+  Future<GrowStoneDebugResult> detectGrowStone(AutomationSession session) async {
+    _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Detect GrowStone');
+    final detector = const ImageDetector();
+    final rect = await detector.findTemplateRect(VisionTemplates.androidGrowstoneIcon);
+    final found = rect != null || await detector.findIcon(VisionTemplates.androidGrowstoneIcon);
+    final tapPosition = rect == null ? null : _randomPointIn(rect);
+    final result = GrowStoneDebugResult(found: found, confidence: found ? 1 : 0, rect: rect, tapPosition: tapPosition);
+    _growStoneDebugResults[session.device.id] = result;
+    _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Found ${found ? 'YES' : 'NO'}');
+    if (rect != null) {
+      _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Confidence ${result.confidence!.toStringAsFixed(2)}');
+      _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Rect L${rect.left} T${rect.top} R${rect.right} B${rect.bottom}');
+      _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Random Position X=${tapPosition!.x} Y=${tapPosition.y}');
+    } else if (!found) {
+      _automationEngine.context.loggerService.log(LogLevel.warning, '[Automation Debug] GrowStone Icon Not Found');
+    }
+    notifyListeners();
+    return result;
+  }
+
+  /// Calculates a new random tap preview without sending ADB input.
+  Future<void> previewRandomTap(AutomationSession session) async {
+    final current = _growStoneDebugResults[session.device.id];
+    final result = current?.rect == null ? await detectGrowStone(session) : GrowStoneDebugResult(found: current!.found, confidence: current.confidence, rect: current.rect, tapPosition: _randomPointIn(current.rect!));
+    _growStoneDebugResults[session.device.id] = result;
+    if (result.tapPosition != null) {
+      _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Generate Random X=${result.tapPosition!.x} Y=${result.tapPosition!.y}');
+    }
+    notifyListeners();
+  }
+
+
+  /// Records that the dashboard overlay is visible for the latest GrowStone rectangle.
+  void logVisionOverlay(AutomationSession session) {
+    final result = _growStoneDebugResults[session.device.id];
+    if (result?.rect == null) {
+      _automationEngine.context.loggerService.log(LogLevel.warning, '[Automation Debug] Vision Overlay unavailable: detect GrowStone first');
+    } else {
+      final rect = result!.rect!;
+      _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Vision Overlay Rect L${rect.left} T${rect.top} R${rect.right} B${rect.bottom} Tap=${result.tapPosition}');
+    }
+    notifyListeners();
+  }
+
+  /// Runs the popup debug hook without continuing automation.
+  void testPopup(AutomationSession session) {
+    _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Test Popup requested for ${session.device.name}');
+    _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Stop');
+    notifyListeners();
+  }
+
+  /// Detects GrowStone, random-taps the icon once through ADB, and stops.
+  Future<void> testGrowStoneTap(AutomationSession session) async {
+    final result = await detectGrowStone(session);
+    if (!result.found || result.tapPosition == null) {
+      _automationEngine.context.loggerService.log(LogLevel.warning, '[Automation Debug] Test Tap stopped: GrowStone Icon Not Found');
+      return;
+    }
+    _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] ADB Tap X=${result.tapPosition!.x} Y=${result.tapPosition!.y}');
+    await _executeAction(session, TapAction(result.tapPosition!.x, result.tapPosition!.y));
+    _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Stop');
+    notifyListeners();
+  }
+
+  Point<int> _randomPointIn(Rectangle<int> rect) {
+    final width = max(1, rect.width);
+    final height = max(1, rect.height);
+    return Point<int>(rect.left + _random.nextInt(width), rect.top + _random.nextInt(height));
+  }
+
+  String _sceneLabel(Scene scene) => switch (scene) {
+        Scene.android => 'Android',
+        Scene.loading => 'Loading',
+        Scene.attendance => 'Attendance',
+        Scene.home => 'Home',
+        Scene.bag => 'Bag',
+        Scene.mail => 'Mail',
+        Scene.shop => 'Shop',
+        Scene.unknown => 'Unknown',
+      };
+
+  Future<String> _saveDebugScreenshot(DeviceScreenshot screenshot) async {
+    final now = DateTime.now();
+    String two(int value) => value.toString().padLeft(2, '0');
+    final date = '${now.year}-${two(now.month)}-${two(now.day)}';
+    final time = '${two(now.hour)}-${two(now.minute)}-${two(now.second)}';
+    final directory = Directory('logs/screenshots/$date');
+    await directory.create(recursive: true);
+    final file = File('${directory.path}/$time.png');
+    await file.writeAsBytes(screenshot.pngBytes, flush: true);
+    return file.path;
   }
 
   /// Asks the assigned plugin to detect the active character for one session.

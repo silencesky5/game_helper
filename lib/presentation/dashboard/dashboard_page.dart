@@ -236,7 +236,7 @@ class _DeviceCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                _ScreenshotPreview(screenshot: screenshot),
+                _ScreenshotPreview(screenshot: screenshot, growStone: controller.growStoneDebugFor(session.device.id)),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
@@ -254,6 +254,8 @@ class _DeviceCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       _RuntimeMonitor(session: session),
+                      const SizedBox(height: 12),
+                      _AutomationDebugPanel(session: session, controller: controller),
                     ],
                   ),
                 ),
@@ -430,6 +432,75 @@ class _RuntimeMonitor extends StatelessWidget {
   }
 }
 
+
+class _AutomationDebugPanel extends StatelessWidget {
+  const _AutomationDebugPanel({required this.session, required this.controller});
+
+  final AutomationSession session;
+  final AutomationController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final GrowStoneDebugResult? growStone = controller.growStoneDebugFor(session.device.id);
+    final String scene = controller.debugSceneFor(session.device.id)?.name ?? session.currentScene;
+    final rect = growStone?.rect;
+    final tap = growStone?.tapPosition;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).dividerColor),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Text('Automation Debug', style: Theme.of(context).textTheme.titleMedium),
+              const Spacer(),
+              const Text('Debug Mode'),
+              Switch(
+                value: controller.debugModeFor(session.device.id),
+                onChanged: (bool value) => controller.toggleDebugMode(session, value),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              OutlinedButton(onPressed: () => controller.detectScene(session), child: const Text('Detect Scene')),
+              OutlinedButton(onPressed: () => controller.detectGrowStone(session), child: const Text('Detect GrowStone')),
+              OutlinedButton(onPressed: () => controller.testGrowStoneTap(session), child: const Text('Test Tap')),
+              OutlinedButton(onPressed: () => controller.captureScreenshot(session), child: const Text('Screenshot')),
+              OutlinedButton(onPressed: () => controller.previewRandomTap(session), child: const Text('Test Random Tap')),
+              OutlinedButton(onPressed: () => controller.logVisionOverlay(session), child: const Text('Vision Overlay')),
+              OutlinedButton(onPressed: () => controller.testPopup(session), child: const Text('Test Popup')),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _InfoRow(label: 'Current Scene', value: _formatScene(scene)),
+          _InfoRow(label: 'Found', value: growStone == null ? 'N/A' : (growStone.found ? 'YES' : 'NO')),
+          _InfoRow(label: 'Confidence', value: growStone?.confidence?.toStringAsFixed(2) ?? 'N/A'),
+          _InfoRow(label: 'Left', value: rect?.left.toString() ?? 'N/A'),
+          _InfoRow(label: 'Top', value: rect?.top.toString() ?? 'N/A'),
+          _InfoRow(label: 'Right', value: rect?.right.toString() ?? 'N/A'),
+          _InfoRow(label: 'Bottom', value: rect?.bottom.toString() ?? 'N/A'),
+          _InfoRow(label: 'Tap Position', value: tap == null ? 'N/A' : '(${tap.x},${tap.y})'),
+        ],
+      ),
+    );
+  }
+
+  String _formatScene(String scene) {
+    if (scene.isEmpty) return 'Unknown';
+    return scene[0].toUpperCase() + scene.substring(1);
+  }
+}
+
 class _ActionGroups extends StatelessWidget {
   const _ActionGroups({required this.session, required this.controller, required this.onPluginSettings, required this.onAutomationLogic, required this.onDeviceInfo});
 
@@ -448,7 +519,6 @@ class _ActionGroups extends StatelessWidget {
       children: <Widget>[
         _ButtonCluster(children: <Widget>[
           OutlinedButton(onPressed: () => controller.captureScreenshot(session), child: Text(context.l10n.screenshot)),
-          OutlinedButton(onPressed: () => controller.detectSceneDebug(session), child: const Text('Detect Scene')),
           OutlinedButton(onPressed: controller.running ? null : controller.start, child: const Text('開始自動化')),
           OutlinedButton(onPressed: () => controller.detectCharacter(session), child: const Text('Detect Character')),
           OutlinedButton(onPressed: onPluginSettings, child: const Text('⚙ Plugin Settings')),
@@ -521,10 +591,40 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
+
+class _VisionOverlayPainter extends CustomPainter {
+  const _VisionOverlayPainter(this.growStone);
+
+  final GrowStoneDebugResult growStone;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = growStone.rect;
+    if (rect == null) return;
+    final paint = Paint()
+      ..color = Colors.greenAccent
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    final scaleX = size.width / 540;
+    final scaleY = size.height / 960;
+    final overlayRect = Rect.fromLTRB(rect.left * scaleX, rect.top * scaleY, rect.right * scaleX, rect.bottom * scaleY);
+    canvas.drawRect(overlayRect, paint);
+    final tap = growStone.tapPosition;
+    if (tap != null) {
+      final dot = Paint()..color = Colors.redAccent;
+      canvas.drawCircle(Offset(tap.x * scaleX, tap.y * scaleY), 4, dot);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _VisionOverlayPainter oldDelegate) => oldDelegate.growStone != growStone;
+}
+
 class _ScreenshotPreview extends StatelessWidget {
-  const _ScreenshotPreview({required this.screenshot});
+  const _ScreenshotPreview({required this.screenshot, this.growStone});
 
   final DeviceScreenshot? screenshot;
+  final GrowStoneDebugResult? growStone;
 
   @override
   Widget build(BuildContext context) {
@@ -546,7 +646,13 @@ class _ScreenshotPreview extends StatelessWidget {
                   child: InteractiveViewer(child: Image.memory(screenshot!.pngBytes, fit: BoxFit.contain)),
                 ),
               ),
-              child: Image.memory(screenshot!.pngBytes, fit: BoxFit.cover, gaplessPlayback: true),
+              child: Stack(
+                fit: StackFit.expand,
+                children: <Widget>[
+                  Image.memory(screenshot!.pngBytes, fit: BoxFit.cover, gaplessPlayback: true),
+                  if (growStone?.rect != null) CustomPaint(painter: _VisionOverlayPainter(growStone!)),
+                ],
+              ),
             ),
     );
   }
