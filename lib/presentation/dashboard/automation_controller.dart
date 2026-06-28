@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../domain/automation/automation_action.dart';
+import '../../domain/automation/automation_config.dart';
 import '../../domain/automation/automation_context.dart';
 import '../../domain/automation/automation_engine.dart';
 import '../../domain/automation/automation_session.dart';
@@ -101,20 +103,23 @@ class AutomationController extends ChangeNotifier {
       }
       _screenshotTimers.clear();
       screenshotRepository.clear();
-      _sessions = devices.asMap().entries.map((entry) {
+      final List<AutomationSession> sessions = <AutomationSession>[];
+      for (final entry in devices.asMap().entries) {
         final device = entry.value.copyWith(name: entry.value.name.trim().isEmpty ? _defaultDeviceName(entry.key) : entry.value.name);
         final session = context.sessionManager.createSession(device).copyWith(
           plugin: plugin,
           workflow: workflow,
           taskProfile: _firstTaskProfile(plugin),
+          automationConfig: await _automationConfigFor(device.id, plugin),
           character: const CharacterProfile.notLoggedIn(),
           workflowRuntime: WorkflowRuntime(context: context),
           startedAt: DateTime.now(),
           currentStep: 'Device Monitor',
         );
         context.sessionManager.updateSession(session);
-        return session;
-      }).toList(growable: false);
+        sessions.add(session);
+      }
+      _sessions = List<AutomationSession>.unmodifiable(sessions);
       context.loggerService.log(LogLevel.info, 'Session Creation complete: ${_sessions.length} ADB device(s) detected');
       _startScreenshotLoops(captureImmediately: true);
     } finally {
@@ -229,6 +234,7 @@ class AutomationController extends ChangeNotifier {
       startedAt: session.startedAt,
       currentStep: currentStep,
       taskProfile: _firstTaskProfile(plugin),
+      automationConfig: await _automationConfigFor(session.device.id, plugin),
       character: const CharacterProfile.notLoggedIn(),
     );
     _replaceSession(session.id, updated);
@@ -236,6 +242,27 @@ class AutomationController extends ChangeNotifier {
     _automationEngine.context.loggerService.log(LogLevel.info, 'Plugin assigned: ${session.device.name} → ${plugin?.displayName ?? '未指定'}');
   }
 
+
+
+  /// Persists generated automation logic for one device session.
+  Future<void> saveAutomationConfig(AutomationSession session, AutomationConfig config) async {
+    await _automationEngine.context.storageService.write(_automationConfigKey(session.device.id), config.toJson());
+    final updated = session.copyWith(automationConfig: config);
+    _replaceSession(session.id, updated);
+    final selectedActions = automationActionsFor(updated)
+        .where((AutomationActionDefinition action) => config.isEnabled(action.id))
+        .map((AutomationActionDefinition action) => action.displayName)
+        .join(' → ');
+    _automationEngine.context.loggerService.log(
+      LogLevel.info,
+      'Automation Logic saved: ${session.device.name} → ${selectedActions.isEmpty ? '全部取消' : selectedActions}',
+    );
+  }
+
+  /// Returns plugin-provided automation actions for [session].
+  List<AutomationActionDefinition> automationActionsFor(AutomationSession session) {
+    return session.plugin?.implementation?.getAutomationActions() ?? const <AutomationActionDefinition>[];
+  }
 
   /// Selects a task profile independently for one device session.
   void assignTaskProfile(AutomationSession session, String taskProfileId) {
@@ -254,6 +281,15 @@ class AutomationController extends ChangeNotifier {
     _automationEngine.context.sessionManager.updateSession(updated);
     notifyListeners();
   }
+
+
+  Future<AutomationConfig> _automationConfigFor(String deviceId, Plugin? plugin) async {
+    final actions = plugin?.implementation?.getAutomationActions() ?? const <AutomationActionDefinition>[];
+    final rawJson = await _automationEngine.context.storageService.read(_automationConfigKey(deviceId));
+    return AutomationConfig.fromJson(deviceId, rawJson, actions);
+  }
+
+  String _automationConfigKey(String deviceId) => 'automation_config.$deviceId';
 
   TaskProfile? _firstTaskProfile(Plugin? plugin) {
     final profiles = plugin?.implementation?.createTaskProfiles() ?? const <TaskProfile>[];
