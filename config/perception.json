@@ -1,0 +1,8 @@
+{
+  "ocrEnabled": true,
+  "ocrRefreshIntervalMs": 1000,
+  "popupThreshold": 0.70,
+  "uiDetectionThreshold": 0.60,
+  "challengeThreshold": 0.70,
+  "cacheTimeMs": 500
+}
