@@ -67,6 +67,8 @@ class _DashboardPageState extends State<DashboardPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
+                  _ADBSettingsCard(controller: _controller),
+                  const SizedBox(height: 16),
                   Row(
                     children: <Widget>[
                       Text('Device Sessions', style: Theme.of(context).textTheme.headlineMedium),
@@ -108,6 +110,80 @@ class _DashboardPageState extends State<DashboardPage> {
 
   void _onControllerChanged() {
     if (mounted) setState(() {});
+  }
+}
+
+
+class _ADBSettingsCard extends StatelessWidget {
+  const _ADBSettingsCard({required this.controller});
+
+  final AutomationController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final adbManager = controller.adbManager;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text('ADB Settings', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Text('ADB Path: ${adbManager.adbPath ?? 'Not discovered'}'),
+            Text('ADB Version: ${adbManager.adbVersion ?? 'Unknown'}'),
+            Text('Connection Status: ${adbManager.connectionStatus}'),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              children: <Widget>[
+                OutlinedButton.icon(
+                  onPressed: () => _showADBPathDialog(context),
+                  icon: const Icon(Icons.folder_open),
+                  label: const Text('Browse...'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: controller.testADBConnection,
+                  icon: const Icon(Icons.cable),
+                  label: const Text('Test Connection'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: controller.rescanADB,
+                  icon: const Icon(Icons.search),
+                  label: const Text('Rescan'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showADBPathDialog(BuildContext context) async {
+    final textController = TextEditingController(text: controller.adbManager.adbPath ?? '');
+    final path = await showDialog<String>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: const Text('ADB Path'),
+        content: TextField(
+          controller: textController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'adb.exe path',
+            hintText: r'C:\LDPlayer\LDPlayer9\adb.exe',
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.of(dialogContext).pop(textController.text), child: const Text('Save')),
+        ],
+      ),
+    );
+    textController.dispose();
+    if (path != null && path.trim().isNotEmpty) {
+      await controller.setADBPath(path);
+    }
   }
 }
 

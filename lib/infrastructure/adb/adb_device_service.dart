@@ -6,16 +6,18 @@ import '../../domain/device/device_service.dart';
 import '../../domain/logger/logger.dart';
 import '../../domain/logger/logger_service.dart';
 import 'adb_command_runner.dart';
+import 'adb_manager.dart';
 import 'adb_device.dart';
 
 /// ADB-backed device service for Android emulator discovery.
 class AdbDeviceService implements DeviceService {
   /// Creates an ADB-backed device service.
-  const AdbDeviceService({
-    this.commandRunner = const AdbCommandRunner(),
+  AdbDeviceService({
+    AdbCommandRunner? commandRunner,
+    ADBManager? adbManager,
     this.logger,
     this.commandTimeout = const Duration(seconds: 3),
-  });
+  }) : commandRunner = commandRunner ?? AdbCommandRunner(adbManager: adbManager ?? ADBManager(logger: logger));
 
   /// Runner responsible for invoking adb.
   final AdbCommandRunner commandRunner;

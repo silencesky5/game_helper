@@ -19,6 +19,7 @@ import '../../domain/command/command_queue.dart';
 import '../../domain/core/result.dart';
 import '../../domain/logger/logger.dart';
 import '../../infrastructure/adb/adb_device_control_service.dart';
+import '../../infrastructure/adb/adb_manager.dart';
 import '../../infrastructure/adb/adb_device_service.dart';
 import '../../infrastructure/adb/adb_screenshot_service.dart';
 import '../../domain/plugin/plugin.dart';
@@ -56,6 +57,10 @@ class AutomationController extends ChangeNotifier {
 
   ScreenshotRepository get screenshotRepository => _automationEngine.context.screenshotRepository;
 
+  ADBManager get adbManager => _automationEngine.context.deviceManager.deviceService is AdbDeviceService
+      ? (_automationEngine.context.deviceManager.deviceService as AdbDeviceService).commandRunner.adbManager
+      : ADBManager(logger: _automationEngine.context.loggerService);
+
   VisionRepository get visionRepository => _automationEngine.context.visionRepository;
 
   PerceptionRepository get perceptionRepository => _automationEngine.context.perceptionRepository;
@@ -74,6 +79,8 @@ class AutomationController extends ChangeNotifier {
     try {
       final context = _automationEngine.context;
       context.loggerService.log(LogLevel.info, 'Desktop Console → Automation Engine → ADB Device Detection');
+      await adbManager.locateADB();
+      await adbManager.validateADB();
       final devices = await context.deviceManager.detectDevices();
       context.sessionManager.clear();
       if (context.pluginManager.plugins.isEmpty) {
@@ -154,6 +161,21 @@ class AutomationController extends ChangeNotifier {
 
   Future<void> swipeTest(AutomationSession session) => _executeAction(session, const SwipeAction(200, 800, 200, 300));
 
+  Future<void> setADBPath(String path) async {
+    await adbManager.setADBPath(path);
+    notifyListeners();
+  }
+
+  Future<void> testADBConnection() async {
+    await adbManager.validateADB();
+    notifyListeners();
+  }
+
+  Future<void> rescanADB() async {
+    await adbManager.rescan();
+    notifyListeners();
+  }
+
   Future<void> restartSession(AutomationSession session) async {
     _automationEngine.context.loggerService.log(LogLevel.info, 'Session Stop ${session.id}');
     _automationEngine.context.loggerService.log(LogLevel.info, 'Session Start ${session.id}');
@@ -196,7 +218,8 @@ class AutomationController extends ChangeNotifier {
     final PluginManager pluginManager = PluginManager();
     final WorkflowEngine workflowEngine = WorkflowEngine();
     final DesktopConsoleLogger loggerService = DesktopConsoleLogger();
-    final DeviceManager deviceManager = DeviceManager(AdbDeviceService(logger: loggerService));
+    final ADBManager adbManager = ADBManager(logger: loggerService);
+    final DeviceManager deviceManager = DeviceManager(AdbDeviceService(logger: loggerService, adbManager: adbManager));
     final LocalStorage storageService = LocalStorage();
     final SessionManager sessionManager = SessionManager();
     final ScreenshotRepository screenshotRepository = ScreenshotRepository();
@@ -217,9 +240,9 @@ class AutomationController extends ChangeNotifier {
         loggerService: loggerService,
         sessionManager: sessionManager,
         storageService: storageService,
-        screenshotService: AdbScreenshotService(logger: loggerService),
+        screenshotService: AdbScreenshotService(logger: loggerService, adbManager: adbManager),
         screenshotRepository: screenshotRepository,
-        deviceControlService: AdbDeviceControlService(logger: loggerService),
+        deviceControlService: AdbDeviceControlService(logger: loggerService, adbManager: adbManager),
         visionService: visionService,
         perceptionService: PerceptionService(
           visionService: visionService,

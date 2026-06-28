@@ -8,10 +8,12 @@ import '../../domain/logger/logger_service.dart';
 import '../../domain/screenshot/device_screenshot.dart';
 import '../../domain/screenshot/screenshot_service.dart';
 import 'adb_command_runner.dart';
+import 'adb_manager.dart';
 
 /// ADB implementation of screenshot capture using exec-out screencap -p.
 class AdbScreenshotService implements ScreenshotService {
-  const AdbScreenshotService({this.commandRunner = const AdbCommandRunner(), this.logger});
+  AdbScreenshotService({AdbCommandRunner? commandRunner, ADBManager? adbManager, this.logger})
+      : commandRunner = commandRunner ?? AdbCommandRunner(adbManager: adbManager ?? ADBManager(logger: logger));
 
   final AdbCommandRunner commandRunner;
   final LoggerService? logger;
