@@ -1,6 +1,6 @@
 import 'workflow_step.dart';
 
-/// Describes a workflow configuration in the domain layer.
+/// Immutable workflow definition used by the workflow engine.
 class Workflow {
   /// Unique workflow identifier.
   final String id;
@@ -8,13 +8,21 @@ class Workflow {
   /// Human-readable workflow name.
   final String name;
 
-  /// Ordered workflow steps.
+  /// Human-readable workflow description.
+  final String description;
+
+  /// Workflow definition version.
+  final String version;
+
+  /// Ordered workflow steps to execute.
   final List<WorkflowStep> steps;
 
-  /// Creates a workflow definition.
+  /// Creates an immutable workflow definition.
   const Workflow({
     required this.id,
     required this.name,
+    required this.description,
+    required this.version,
     required this.steps,
   });
 }
