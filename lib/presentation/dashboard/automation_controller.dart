@@ -185,15 +185,15 @@ class AutomationController extends ChangeNotifier {
   }
 
   Future<void> captureScreenshot(AutomationSession session) async {
-    final result = await _automationEngine.context.screenshotService.capture(session.device);
+    final result = await _automationEngine.context.screenshotService.capturePreview(session.device);
     switch (result) {
       case Success(:final value):
         _automationEngine.context.screenshotRepository.save(value);
         final path = await _saveDebugScreenshot(value);
-        _automationEngine.context.loggerService.log(LogLevel.info, 'Screenshot Updated: ${session.device.name} (${session.device.id})');
+        _automationEngine.context.loggerService.log(LogLevel.info, 'ADB Screenshot Success: ${session.device.name} (${session.device.id}) ${value.sizeLabel}');
         _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Screenshot saved: $path');
       case Failure(:final error):
-        _automationEngine.context.loggerService.log(LogLevel.error, 'Screenshot Failed: ${session.device.name} (${session.device.id}) ${error.message}');
+        _automationEngine.context.loggerService.log(LogLevel.error, 'Capture Failed: ${session.device.name} (${session.device.id}) ${error.message}');
     }
     notifyListeners();
   }
@@ -217,8 +217,25 @@ class AutomationController extends ChangeNotifier {
     notifyListeners();
   }
 
+
+  Future<bool> _captureForVision(AutomationSession session) async {
+    final result = await _automationEngine.context.screenshotService.captureForVision(session.device);
+    switch (result) {
+      case Success(:final value):
+        _automationEngine.context.screenshotRepository.save(value);
+        _automationEngine.context.loggerService.log(LogLevel.info, '[ADB Screenshot] Success ${value.sizeLabel}');
+        notifyListeners();
+        return true;
+      case Failure(:final error):
+        _automationEngine.context.loggerService.log(LogLevel.error, '[ADB Screenshot] Capture Failed: ${error.message}');
+        notifyListeners();
+        return false;
+    }
+  }
+
   /// Detects the current scene with template-level debug information.
   Future<void> detectSceneDebug(AutomationSession session) async {
+    await _captureForVision(session);
     final report = await const ImageDetector().debugScene();
     _automationEngine.context.loggerService.log(
       LogLevel.info,
@@ -241,6 +258,7 @@ class AutomationController extends ChangeNotifier {
 
   /// Detects and displays the current scene for one device.
   Future<void> detectScene(AutomationSession session) async {
+    await _captureForVision(session);
     final scene = await const ImageDetector().detectScene();
     _debugScenes[session.device.id] = scene;
     _replaceSession(session.id, session.copyWith(currentScene: _sceneLabel(scene)));
@@ -250,6 +268,7 @@ class AutomationController extends ChangeNotifier {
   /// Detects the GrowStone icon and records rectangle/tap preview details.
   Future<GrowStoneDebugResult> detectGrowStone(AutomationSession session) async {
     _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Detect GrowStone');
+    await _captureForVision(session);
     final detector = const ImageDetector();
     final rect = await detector.findTemplateRect(VisionTemplates.androidGrowstoneIcon);
     final found = rect != null || await detector.findIcon(VisionTemplates.androidGrowstoneIcon);

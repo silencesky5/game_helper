@@ -255,6 +255,11 @@ class _DeviceCard extends StatelessWidget {
                       const SizedBox(height: 12),
                       _RuntimeMonitor(session: session),
                       const SizedBox(height: 12),
+                      _InfoRow(label: 'ADB Status', value: session.device.isOnline ? '🟢 Connected' : '🔴 ${session.device.status.name}'),
+                      _InfoRow(label: 'Screenshot', value: screenshot == null ? '🔴 Capture Failed' : '🟢 Ready'),
+                      _InfoRow(label: 'Last Capture', value: screenshot == null ? context.l10n.never : screenshot.updatedAt.toLocal().toString().split(' ').last.split('.').first),
+                      _InfoRow(label: 'Image Size', value: screenshot?.sizeLabel ?? 'Unknown'),
+                      const SizedBox(height: 12),
                       _AutomationDebugPanel(session: session, controller: controller),
                     ],
                   ),
@@ -392,11 +397,13 @@ class _DeviceCard extends StatelessWidget {
               _InfoRow(label: 'Brand', value: session.device.manufacturer),
               _InfoRow(label: 'Model', value: session.device.model),
               _InfoRow(label: 'Serial', value: session.device.id),
-              _InfoRow(label: 'ADB', value: session.device.status.name),
+              _InfoRow(label: 'ADB Status', value: session.device.isOnline ? '🟢 Connected' : '🔴 ${session.device.status.name}'),
+              _InfoRow(label: 'Screenshot', value: screenshot == null ? '🔴 Capture Failed' : '🟢 Ready'),
               const _InfoRow(label: 'CPU', value: 'N/A'),
               const _InfoRow(label: 'Memory', value: 'N/A'),
               _InfoRow(label: 'Plugin Version', value: session.plugin?.version ?? 'N/A'),
-              _InfoRow(label: 'Last Update', value: screenshot?.updatedAt.toLocal().toString().split('.').first ?? context.l10n.never),
+              _InfoRow(label: 'Last Capture', value: screenshot?.updatedAt.toLocal().toString().split('.').first ?? context.l10n.never),
+              _InfoRow(label: 'Image Size', value: screenshot?.sizeLabel ?? 'Unknown'),
             ],
           ),
         ),
@@ -518,7 +525,7 @@ class _ActionGroups extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: <Widget>[
         _ButtonCluster(children: <Widget>[
-          OutlinedButton(onPressed: () => controller.captureScreenshot(session), child: Text(context.l10n.screenshot)),
+          OutlinedButton(onPressed: () => controller.captureScreenshot(session), child: const Text('ADB Screenshot')),
           OutlinedButton(onPressed: controller.running ? null : controller.start, child: const Text('開始自動化')),
           OutlinedButton(onPressed: () => controller.detectCharacter(session), child: const Text('Detect Character')),
           OutlinedButton(onPressed: onPluginSettings, child: const Text('⚙ Plugin Settings')),
@@ -593,9 +600,10 @@ class _InfoRow extends StatelessWidget {
 
 
 class _VisionOverlayPainter extends CustomPainter {
-  const _VisionOverlayPainter(this.growStone);
+  const _VisionOverlayPainter(this.growStone, this.screenshot);
 
   final GrowStoneDebugResult growStone;
+  final DeviceScreenshot screenshot;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -605,8 +613,8 @@ class _VisionOverlayPainter extends CustomPainter {
       ..color = Colors.greenAccent
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
-    final scaleX = size.width / 540;
-    final scaleY = size.height / 960;
+    final scaleX = size.width / (screenshot.width ?? size.width);
+    final scaleY = size.height / (screenshot.height ?? size.height);
     final overlayRect = Rect.fromLTRB(rect.left * scaleX, rect.top * scaleY, rect.right * scaleX, rect.bottom * scaleY);
     canvas.drawRect(overlayRect, paint);
     final tap = growStone.tapPosition;
@@ -617,7 +625,7 @@ class _VisionOverlayPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _VisionOverlayPainter oldDelegate) => oldDelegate.growStone != growStone;
+  bool shouldRepaint(covariant _VisionOverlayPainter oldDelegate) => oldDelegate.growStone != growStone || oldDelegate.screenshot != screenshot;
 }
 
 class _ScreenshotPreview extends StatelessWidget {
@@ -650,7 +658,7 @@ class _ScreenshotPreview extends StatelessWidget {
                 fit: StackFit.expand,
                 children: <Widget>[
                   Image.memory(screenshot!.pngBytes, fit: BoxFit.cover, gaplessPlayback: true),
-                  if (growStone?.rect != null) CustomPaint(painter: _VisionOverlayPainter(growStone!)),
+                  if (growStone?.rect != null) CustomPaint(painter: _VisionOverlayPainter(growStone!, screenshot!)),
                 ],
               ),
             ),

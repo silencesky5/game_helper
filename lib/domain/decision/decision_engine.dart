@@ -72,7 +72,7 @@ class DecisionEngine {
       if (step is WaitPlanStep) {
         await Future<void>.delayed(step.duration);
       } else if (step is RefreshPerceptionStep) {
-        final result = await context.screenshotService.capture(session.device);
+        final result = await context.screenshotService.captureForVision(session.device);
         if (result is Failure) return false;
         await result.fold((screenshot) async {
           context.screenshotRepository.save(screenshot);
