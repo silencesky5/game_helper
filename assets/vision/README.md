@@ -1,22 +1,17 @@
-# Vision Templates
+# Vision Template Library
 
-Minimum Vision Set templates live under this directory. Detectors reference
-stable template IDs relative to `assets/vision/` (for example
-`home/bag` maps to `assets/vision/home/bag.png`) instead of hard-coding full
-asset paths in task logic.
+Calibration templates are loaded from this directory by the dashboard Vision Calibration panel.
 
-Expected v1 templates:
+Expected PNG assets:
 
 - `android/growstone_icon.png`
 - `loading/loading_logo.png`
 - `attendance/attendance_title.png`
 - `attendance/receive_all.png`
-- `attendance/receive_all_disabled.png`
 - `attendance/close_button.png`
 - `home/bag.png`
 - `home/shop.png`
 - `home/mail.png`
 - `home/craft.png`
-- `bag/title.png`
-- `mail/title.png`
-- `shop/title.png`
+
+Use dashboard **Crop Template** workflow once implemented, or add calibrated PNG crops here before running detection.
