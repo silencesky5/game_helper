@@ -450,6 +450,7 @@ class _ActionGroups extends StatelessWidget {
       children: <Widget>[
         _ButtonCluster(children: <Widget>[
           OutlinedButton(onPressed: () => controller.captureScreenshot(session), child: Text(context.l10n.screenshot)),
+          OutlinedButton(onPressed: () => controller.detectSceneDebug(session), child: const Text('Detect Scene')),
           OutlinedButton(onPressed: () => controller.detectCharacter(session), child: const Text('Detect Character')),
           OutlinedButton(onPressed: onPluginSettings, child: const Text('⚙ Plugin Settings')),
           OutlinedButton(onPressed: onAutomationLogic, child: const Text('設定運行邏輯')),

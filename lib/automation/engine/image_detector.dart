@@ -69,6 +69,10 @@ class ImageDetector {
 
   /// Detects the current scene using only fixed UI templates.
   Future<Scene> detectScene() => const VisionSystem().detectScene(this);
+
+  /// Builds a dashboard-friendly scene debug report.
+  Future<VisionDebugReport> debugScene() =>
+      const VisionSystem().debugScene(this);
 }
 
 /// Boolean detector contract for a single fixed-UI scene.
@@ -180,5 +184,69 @@ class VisionSystem {
       }
     }
     return Scene.unknown;
+  }
+
+  /// Returns scene plus the Home template details requested by the dashboard.
+  Future<VisionDebugReport> debugScene(ImageDetector detector) async {
+    final scene = await detectScene(detector);
+    final probes = <VisionDebugProbe>[];
+    for (final entry in <String, String>{
+      'Bag': VisionTemplates.homeBag,
+      'Shop': VisionTemplates.homeShop,
+      'Mail': VisionTemplates.homeMail,
+      'Craft': VisionTemplates.homeCraft,
+    }.entries) {
+      final matched = await detector.findTemplate(entry.value);
+      probes.add(VisionDebugProbe(name: entry.key, matched: matched));
+    }
+    return VisionDebugReport(scene: scene, probes: probes);
+  }
+}
+
+/// One template probe shown by the dashboard vision debugger.
+class VisionDebugProbe {
+  /// Creates a debug probe result.
+  const VisionDebugProbe({
+    required this.name,
+    required this.matched,
+    this.score,
+  });
+
+  /// Human-readable template name.
+  final String name;
+
+  /// Whether the template matched.
+  final bool matched;
+
+  /// Optional confidence score when provided by a detector implementation.
+  final double? score;
+}
+
+/// Dashboard-friendly scene detection report.
+class VisionDebugReport {
+  /// Creates a scene debug report.
+  const VisionDebugReport({required this.scene, required this.probes});
+
+  /// Current detected scene.
+  final Scene scene;
+
+  /// Template probe details.
+  final List<VisionDebugProbe> probes;
+
+  @override
+  String toString() {
+    final buffer = StringBuffer('Current Scene: ${scene.name}');
+    for (final probe in probes) {
+      buffer
+        ..writeln()
+        ..writeln('--------------')
+        ..writeln(probe.name)
+        ..writeln(probe.matched ? '✔' : '✘')
+        ..write(
+          probe.score?.toStringAsFixed(2) ??
+              (probe.matched ? '1.00' : '0.00'),
+        );
+    }
+    return buffer.toString();
   }
 }
