@@ -18,16 +18,16 @@ class StateManager {
   /// Replaces state after detector services produce a new observation.
   void update(GameState state) => _state = state;
 
-  Future<bool> hasGrowStoneIcon() => imageDetector.findIcon('growstone_icon');
+  Future<Scene> detectScene() => imageDetector.detectScene();
 
-  Future<bool> isLoadingScene() async {
-    final hasLogo = await imageDetector.findTemplate('loading_logo');
-    final hasPercentage = await imageDetector.findTemplate('loading_percentage');
-    return hasLogo && hasPercentage;
-  }
+  Future<bool> hasGrowStoneIcon() =>
+      imageDetector.findIcon(VisionTemplates.androidGrowstoneIcon);
+
+  Future<bool> isLoadingScene() async =>
+      await detectScene() == Scene.loading || _state.currentScene == 'loading';
 
   Future<bool> isHomeScene() async =>
-      _state.currentScene == 'home' || await imageDetector.findTemplate('home_scene');
+      _state.currentScene == 'home' || await detectScene() == Scene.home;
 
   bool isLogin() => _state.currentScene == 'login';
   bool isMining() => _state.mining;
