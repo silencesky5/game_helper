@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 import '../../domain/automation/automation_session.dart';
 import '../../domain/automation/automation_state.dart';
 import '../../domain/decision/decision_state.dart';
-import '../../domain/perception/perception_types.dart';
 import '../../domain/screenshot/device_screenshot.dart';
-import '../../domain/vision/vision_types.dart';
 import 'automation_controller.dart';
 import 'widgets/start_button.dart';
 
@@ -89,7 +87,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         ? _EmptyDeviceState(detecting: _controller.detecting)
                         : GridView.count(
                             crossAxisCount: 2,
-                            childAspectRatio: 2.7,
+                            childAspectRatio: 1.85,
                             children: sessions
                                 .map((AutomationSession session) => _DeviceCard(session: session, controller: _controller))
                                 .toList(growable: false),
@@ -184,8 +182,6 @@ class _DeviceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final DeviceScreenshot? screenshot = controller.screenshotRepository.latest(session.device.id);
-    final VisionResult? vision = controller.visionRepository.lastAnalysis(session.device.id);
-    final PerceptionResult? perception = controller.perceptionRepository.lastResult(session.device.id);
     final DecisionStatus? decision = controller.decisionRepository.statusFor(session.device.id);
     return Card(
       child: Padding(
@@ -199,38 +195,25 @@ class _DeviceCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text('${session.id} → ${session.device.name}', style: Theme.of(context).textTheme.titleLarge),
+                  Text(session.device.name, style: Theme.of(context).textTheme.titleLarge),
+                  Text(session.device.id, style: Theme.of(context).textTheme.bodySmall),
                   const SizedBox(height: 8),
-                  Text('Online Status: ${session.device.status.name}'),
+                  Text('Device Status: ${session.device.status.name}'),
+                  Text('Android Version: ${session.device.androidVersion}'),
+                  Text('Resolution: ${session.device.resolution}'),
+                  Text('Manufacturer: ${session.device.manufacturer}'),
+                  Text('Model: ${session.device.model}'),
                   Text('Current Plugin: ${session.plugin?.name ?? 'Mine Journey'}'),
-                  Text('Current Workflow: ${session.workflow?.name ?? 'Dummy Workflow'}'),
+                  Text('Current Goal: ${decision?.currentGoal ?? 'Device Monitor'}'),
                   Text('Runtime: ${session.startedAt == null ? '00:00:00' : DateTime.now().difference(session.startedAt!).toString().split('.').first}'),
+                  Text('Current State: ${session.state == AutomationState.idle ? 'idle' : session.state.name}'),
                   Text('Current Step: ${session.currentStep}'),
-                  Text('Session State: ${session.state == AutomationState.idle ? 'idle' : session.state.name}'),
-                  Text('Screenshot Status: ${screenshot == null ? 'placeholder' : 'live'}'),
+                  Text('Screenshot Status: ${screenshot == null ? 'waiting for live frame' : 'live'}'),
                   Text('Last Update: ${screenshot?.updatedAt.toLocal().toString().split('.').first ?? 'Never'}'),
                   const Divider(height: 16),
-                  Text('Vision Panel', style: Theme.of(context).textTheme.titleSmall),
-                  Text('Current State: ${vision?.currentState.name ?? 'unknown'}'),
-                  Text('Last Vision Time: ${vision?.timestamp.toLocal().toString().split('.').first ?? 'Never'}'),
-                  Text('Match Count: ${vision?.matchCount ?? 0}'),
-                  Text('Detection Status: ${vision?.detectionStatus ?? 'waiting'}'),
-                  const Divider(height: 16),
-                  Text('Perception Debug Panel', style: Theme.of(context).textTheme.titleSmall),
-                  Text('Current State: ${perception?.currentState.name ?? 'unknown'}'),
-                  Text('Popup Type: ${perception?.popup.type.name ?? 'none'}'),
-                  Text('OCR Text Count: ${perception?.ocr.count ?? 0}'),
-                  Text('UI Element Count: ${perception?.uiElementCount ?? 0}'),
-                  Text('Challenge Status: ${perception?.challengeStatus.label ?? 'none'}'),
-                  Text('Analysis Time: ${perception?.analysisTime.inMilliseconds ?? 0}ms'),
-                  Text('Recent OCR Preview: ${perception?.ocr.preview.isEmpty ?? true ? 'No OCR text' : perception!.ocr.preview}', maxLines: 2, overflow: TextOverflow.ellipsis),
-                  const Divider(height: 16),
-                  Text('Decision Panel', style: Theme.of(context).textTheme.titleSmall),
-                  Text('Current Goal: ${decision?.currentGoal ?? 'Idle'}'),
+                  Text('Device Monitor', style: Theme.of(context).textTheme.titleSmall),
                   Text('Current Decision: ${decision?.currentDecision ?? 'Waiting'}'),
                   Text('Current Action: ${decision?.currentAction ?? 'None'}'),
-                  Text('Retry Count: ${decision?.retryCount ?? 0}'),
-                  Text('Last Decision Time: ${decision?.lastDecisionTime?.toLocal().toString().split('.').first ?? 'Never'}'),
                   const Spacer(),
                   Wrap(
                     spacing: 8,
