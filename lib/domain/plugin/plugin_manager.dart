@@ -119,7 +119,7 @@ class MineJourneyPlugin implements GamePlugin {
       id: 'mine_journey_dummy_workflow',
       name: 'Mine Journey Dummy Workflow',
       description: 'Dummy Sprint 1 workflow with only log and delay steps.',
-      version: '1.0',
+      version: '1.0.0',
       steps: <WorkflowStep>[
         LogStep(id: 'log_start', message: 'Dummy workflow started'),
         DelayStep(id: 'delay_demo', milliseconds: 250),
@@ -138,14 +138,50 @@ class MockPluginRepository implements PluginRepository {
   Future<List<Plugin>> loadPlugins() async {
     return const <Plugin>[
       Plugin(
+        id: 'unassigned',
+        name: '未指定',
+        version: 'N/A',
+        author: 'Game Helper Platform',
+        description: 'No game plugin is assigned to this device.',
+        icon: 'block',
+        enabled: true,
+      ),
+      Plugin(
         id: 'mine_journey',
         name: 'Mine Journey',
-        version: '1.0',
+        version: '1.0.0',
         author: 'Game Helper Team',
         description: 'Mine Journey MVP launch and wait-main-menu pipeline.',
         icon: 'extension',
         enabled: true,
         implementation: MineJourneyPlugin(),
+      ),
+      Plugin(
+        id: 'lineage_m',
+        name: '天堂M',
+        version: 'Not installed',
+        author: 'Plugin Marketplace',
+        description: 'Marketplace placeholder for a future Lineage M plugin.',
+        icon: 'extension',
+        enabled: false,
+      ),
+      Plugin(
+        id: 'ro',
+        name: 'RO',
+        version: 'Not installed',
+        author: 'Plugin Marketplace',
+        description: 'Marketplace placeholder for a future RO plugin.',
+        icon: 'extension',
+        enabled: false,
+      ),
+      Plugin(
+        id: 'maplestory_m',
+        name: '楓之谷M',
+        version: 'Not installed',
+        author: 'Plugin Marketplace',
+        description: 'Marketplace placeholder for a future MapleStory M plugin.',
+        icon: 'extension',
+        enabled: false,
       ),
     ];
   }
@@ -156,7 +192,7 @@ class MockPluginRepository implements PluginRepository {
       id: 'mine_journey_dummy_workflow',
       name: 'Mine Journey Dummy Workflow',
       description: 'Dummy Sprint 1 workflow with only log and delay steps.',
-      version: '1.0',
+      version: '1.0.0',
       steps: <WorkflowStep>[
         LogStep(id: 'log_start', message: 'Dummy workflow started'),
         DelayStep(id: 'delay_demo', milliseconds: 250),

@@ -312,52 +312,179 @@ class _DeviceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final DeviceScreenshot? screenshot = controller.screenshotRepository.latest(session.device.id);
     final DecisionStatus? decision = controller.decisionRepository.statusFor(session.device.id);
+    final String pluginName = session.plugin?.name ?? '未指定';
+    final String pluginRuntime = session.plugin?.implementation?.runtimeType.toString() ?? pluginName;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            _ScreenshotPreview(screenshot: screenshot),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        child: DefaultTabController(
+          length: 2,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
                 children: <Widget>[
-                  Text(session.device.name, style: Theme.of(context).textTheme.titleLarge),
-                  Text(session.device.id, style: Theme.of(context).textTheme.bodySmall),
-                  const SizedBox(height: 8),
-                  Text(context.l10n.deviceStatus(session.device.status.name)),
-                  Text(context.l10n.androidVersion(session.device.androidVersion)),
-                  Text(context.l10n.resolution(session.device.resolution)),
-                  Text(context.l10n.manufacturer(session.device.manufacturer)),
-                  Text(context.l10n.model(session.device.model)),
-                  Text(context.l10n.currentPlugin(session.plugin?.name ?? 'Mine Journey')),
-                  Text(context.l10n.currentGoal(decision?.currentGoal ?? context.l10n.deviceMonitor)),
-                  Text(context.l10n.runtime(session.startedAt == null ? '00:00:00' : DateTime.now().difference(session.startedAt!).toString().split('.').first)),
-                  Text(context.l10n.currentState(session.state == AutomationState.idle ? context.l10n.idle : session.state.name)),
-                  Text(context.l10n.currentStep(session.currentStep)),
-                  Text(context.l10n.screenshotStatus(screenshot == null ? context.l10n.waitingForLiveFrame : context.l10n.live)),
-                  Text(context.l10n.lastUpdate(screenshot?.updatedAt.toLocal().toString().split('.').first ?? context.l10n.never)),
-                  const Divider(height: 16),
-                  Text(context.l10n.deviceMonitor, style: Theme.of(context).textTheme.titleSmall),
-                  Text(context.l10n.currentDecision(decision?.currentDecision ?? context.l10n.waiting)),
-                  Text(context.l10n.currentAction(decision?.currentAction ?? context.l10n.none)),
-                  const Spacer(),
-                  Wrap(
-                    spacing: 8,
-                    children: <Widget>[
-                      OutlinedButton(onPressed: () => controller.captureScreenshot(session), child: Text(context.l10n.screenshot)),
-                      OutlinedButton(onPressed: () => controller.tapTest(session), child: Text(context.l10n.tapTest)),
-                      OutlinedButton(onPressed: () => controller.swipeTest(session), child: Text(context.l10n.swipeTest)),
-                      OutlinedButton(onPressed: () => controller.restartSession(session), child: Text(context.l10n.restartSession)),
-                    ],
+                  Icon(Icons.phone_android, color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(session.device.name, style: Theme.of(context).textTheme.titleLarge)),
+                  IconButton(
+                    tooltip: 'Rename device',
+                    onPressed: () => _showRenameDialog(context),
+                    icon: const Icon(Icons.edit_outlined),
                   ),
                 ],
               ),
-            ),
-          ],
+              Text(pluginName, style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  _ScreenshotPreview(screenshot: screenshot),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        DropdownButtonFormField<String>(
+                          value: session.plugin?.id ?? 'unassigned',
+                          decoration: const InputDecoration(labelText: '遊戲', isDense: true),
+                          items: controller.availablePlugins
+                              .map((plugin) => DropdownMenuItem<String>(value: plugin.id, child: Text(plugin.name)))
+                              .toList(growable: false),
+                          onChanged: (String? pluginId) {
+                            if (pluginId != null) controller.assignPlugin(session, pluginId);
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        Text('Plugin  $pluginRuntime'),
+                        Text('Version  ${session.plugin?.version ?? 'N/A'}'),
+                        const SizedBox(height: 8),
+                        const TabBar(
+                          tabs: <Widget>[
+                            Tab(text: '遊玩狀態'),
+                            Tab(text: '裝置資訊'),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              Expanded(
+                child: TabBarView(
+                  children: <Widget>[
+                    _GameStatusTab(session: session, decision: decision),
+                    _DeviceInfoTab(session: session, screenshot: screenshot),
+                  ],
+                ),
+              ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: <Widget>[
+                  OutlinedButton(onPressed: () => controller.captureScreenshot(session), child: Text(context.l10n.screenshot)),
+                  OutlinedButton(onPressed: () => controller.tapTest(session), child: Text(context.l10n.tapTest)),
+                  OutlinedButton(onPressed: () => controller.swipeTest(session), child: Text(context.l10n.swipeTest)),
+                  OutlinedButton(onPressed: () => controller.restartSession(session), child: Text(context.l10n.restartSession)),
+                ],
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Future<void> _showRenameDialog(BuildContext context) async {
+    final textController = TextEditingController(text: session.device.name);
+    final String? name = await showDialog<String>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: const Text('Device Name'),
+        content: TextField(
+          controller: textController,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Device #1'),
+        ),
+        actions: <Widget>[
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(context.l10n.cancel)),
+          FilledButton(onPressed: () => Navigator.of(dialogContext).pop(textController.text), child: Text(context.l10n.save)),
+        ],
+      ),
+    );
+    textController.dispose();
+    if (name != null) controller.renameSessionDevice(session, name);
+  }
+}
+
+class _GameStatusTab extends StatelessWidget {
+  const _GameStatusTab({required this.session, required this.decision});
+
+  final AutomationSession session;
+  final DecisionStatus? decision;
+
+  @override
+  Widget build(BuildContext context) {
+    final runtime = session.startedAt == null ? '00:00:00' : DateTime.now().difference(session.startedAt!).toString().split('.').first;
+    return ListView(
+      padding: const EdgeInsets.only(top: 8),
+      children: <Widget>[
+        _InfoRow(label: '目前任務', value: decision?.currentGoal ?? context.l10n.deviceMonitor),
+        _InfoRow(label: '下一步', value: decision?.currentAction ?? context.l10n.waiting),
+        _InfoRow(label: '執行時間', value: runtime),
+        _InfoRow(label: '目前狀態', value: session.state == AutomationState.idle ? context.l10n.idle : session.state.name),
+        _InfoRow(label: '錯誤', value: context.l10n.none),
+        const Divider(height: 16),
+        const Text('今日收益'),
+        const _InfoRow(label: '金幣', value: '0'),
+        const _InfoRow(label: '礦石', value: '0'),
+        const _InfoRow(label: '木材', value: '0'),
+      ],
+    );
+  }
+}
+
+class _DeviceInfoTab extends StatelessWidget {
+  const _DeviceInfoTab({required this.session, required this.screenshot});
+
+  final AutomationSession session;
+  final DeviceScreenshot? screenshot;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.only(top: 8),
+      children: <Widget>[
+        _InfoRow(label: 'Android Version', value: session.device.androidVersion),
+        _InfoRow(label: 'Resolution', value: session.device.resolution),
+        _InfoRow(label: 'Brand', value: session.device.manufacturer),
+        _InfoRow(label: 'Model', value: session.device.model),
+        _InfoRow(label: 'Serial', value: session.device.id),
+        _InfoRow(label: 'ADB', value: session.device.status.name),
+        _InfoRow(label: 'Plugin', value: session.plugin?.name ?? '未指定'),
+        const _InfoRow(label: 'Screenshot FPS', value: 'Live refresh'),
+        _InfoRow(label: 'Last Update', value: screenshot?.updatedAt.toLocal().toString().split('.').first ?? context.l10n.never),
+      ],
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: <Widget>[
+          SizedBox(width: 120, child: Text(label, style: Theme.of(context).textTheme.bodySmall)),
+          Expanded(child: Text(value)),
+        ],
       ),
     );
   }
