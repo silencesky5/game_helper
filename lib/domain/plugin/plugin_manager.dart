@@ -1,3 +1,7 @@
+import '../action/device_action.dart';
+import '../decision/action_plan.dart';
+import '../decision/goal.dart';
+import '../vision/game_state.dart';
 import '../workflow/steps/delay_step.dart';
 import '../workflow/steps/log_step.dart';
 import '../workflow/workflow.dart';
@@ -42,7 +46,54 @@ class PluginManager {
   }
 }
 
-/// Empty Mine Journey starter plugin used to validate the plugin boundary.
+class LaunchGameGoal extends Goal {
+  const LaunchGameGoal({this.packageName = 'com.minejourney.game', this.activityName});
+
+  final String packageName;
+  final String? activityName;
+
+  @override
+  String get id => 'launch_game';
+
+  @override
+  String get name => 'Launch Game';
+
+  @override
+  ActionPlan nextAction(perception) {
+    if (perception?.currentState == GameState.loading || perception?.currentState == GameState.mainMenu) {
+      return ActionPlan.finished;
+    }
+    return ActionPlan(
+      name: 'Launch App then refresh perception',
+      steps: <PlanStep>[
+        DevicePlanStep(LaunchAppAction(packageName, activityName: activityName)),
+        const WaitPlanStep(Duration(seconds: 2)),
+        const RefreshPerceptionStep(),
+      ],
+    );
+  }
+}
+
+class WaitMainMenuGoal extends Goal {
+  const WaitMainMenuGoal();
+
+  @override
+  String get id => 'wait_main_menu';
+
+  @override
+  String get name => 'Wait Main Menu';
+
+  @override
+  ActionPlan nextAction(perception) {
+    if (perception?.currentState == GameState.mainMenu) return ActionPlan.finished;
+    return const ActionPlan(
+      name: 'Wait for MainMenu state',
+      steps: <PlanStep>[WaitPlanStep(Duration(seconds: 1)), RefreshPerceptionStep()],
+    );
+  }
+}
+
+/// Mine Journey MVP plugin that returns launch and wait-main-menu goals.
 class MineJourneyPlugin implements GamePlugin {
   /// Creates the Mine Journey starter plugin.
   const MineJourneyPlugin();
@@ -58,6 +109,9 @@ class MineJourneyPlugin implements GamePlugin {
 
   @override
   Future<void> onUnload() async {}
+
+  @override
+  List<Goal> createGoals() => const <Goal>[LaunchGameGoal(), WaitMainMenuGoal()];
 
   @override
   Workflow createWorkflow() {
@@ -88,7 +142,7 @@ class MockPluginRepository implements PluginRepository {
         name: 'Mine Journey',
         version: '1.0',
         author: 'Game Helper Team',
-        description: 'Empty starter plugin for the first execution pipeline.',
+        description: 'Mine Journey MVP launch and wait-main-menu pipeline.',
         icon: 'extension',
         enabled: true,
         implementation: MineJourneyPlugin(),

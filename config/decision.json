@@ -1,0 +1,6 @@
+{
+  "retryCount": 3,
+  "timeoutMs": 30000,
+  "decisionIntervalMs": 1000,
+  "recoveryPolicy": "retry"
+}

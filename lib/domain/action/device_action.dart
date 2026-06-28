@@ -65,3 +65,13 @@ class LogAction extends DeviceAction {
     return const Success<void>(null);
   }
 }
+
+class LaunchAppAction extends DeviceAction {
+  const LaunchAppAction(this.packageName, {this.activityName});
+  final String packageName;
+  final String? activityName;
+  @override
+  String get label => 'Launch App';
+  @override
+  Future<Result<void>> execute(ActionContext context) => context.deviceControlService.launchApp(context.session.device, packageName, activityName: activityName);
+}

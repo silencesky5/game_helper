@@ -6,6 +6,8 @@ import '../../domain/automation/automation_context.dart';
 import '../../domain/automation/automation_engine.dart';
 import '../../domain/automation/automation_session.dart';
 import '../../domain/automation/session_manager.dart';
+import '../../domain/decision/decision_config.dart';
+import '../../domain/decision/decision_state.dart';
 import '../../domain/device/device_manager.dart';
 import '../../domain/perception/perception_config.dart';
 import '../../domain/perception/perception_repository.dart';
@@ -48,6 +50,8 @@ class AutomationController extends ChangeNotifier {
   VisionRepository get visionRepository => _automationEngine.context.visionRepository;
 
   PerceptionRepository get perceptionRepository => _automationEngine.context.perceptionRepository;
+
+  DecisionRepository get decisionRepository => _automationEngine.context.decisionRepository;
 
   /// Starts the Mine Journey automation pipeline.
   Future<void> start() async {
@@ -158,6 +162,8 @@ class AutomationController extends ChangeNotifier {
         ),
         visionRepository: visionRepository,
         perceptionRepository: perceptionRepository,
+        decisionConfig: DecisionConfig.loadSync(),
+        decisionRepository: DecisionRepository(),
       ),
     );
   }
