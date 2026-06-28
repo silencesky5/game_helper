@@ -12,4 +12,9 @@ class AdbCommandRunner {
   Future<ProcessResult> run(List<String> arguments) {
     return Process.run(executable, arguments);
   }
+
+  /// Runs adb and preserves stdout as raw bytes for binary commands.
+  Future<ProcessResult> runBinary(List<String> arguments) {
+    return Process.run(executable, arguments, stdoutEncoding: null);
+  }
 }

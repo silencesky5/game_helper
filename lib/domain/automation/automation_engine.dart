@@ -55,6 +55,11 @@ class AutomationEngine {
         ),
       );
       context.sessionManager.updateSession(runningSession);
+      final screenshotResult = await context.screenshotService.capture(device);
+      screenshotResult.fold(
+        (screenshot) => context.screenshotRepository.save(screenshot),
+        (error) => context.loggerService.log(LogLevel.error, '[ADB] Capture Screenshot failed: ${error.message}'),
+      );
       sessions.add(runningSession);
 
       context.workflowEngine.runtime.context = context;
