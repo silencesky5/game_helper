@@ -33,8 +33,8 @@ class MockPluginRepository implements PluginRepository {
         version: '1.0',
         author: 'Game Helper Team',
         description: 'Starter plugin metadata for the plugin manager foundation.',
-        icon: 'extension',
         enabled: true,
+        path: 'plugins/mine_journey',
       ),
     ];
   }

@@ -1,12 +1,12 @@
 import '../../domain/plugin/plugin_manifest.dart';
 
-/// Stub for future plugin manifest parsing behavior.
+/// Parses plugin manifest data without handling workflow definitions.
 class ManifestParser {
-  /// Creates a manifest parser stub.
+  /// Creates a manifest parser.
   const ManifestParser();
 
-  /// Converts already-decoded manifest data into a domain manifest.
-  PluginManifest parse(Map<String, dynamic> json) {
+  /// Converts already-decoded manifest.json data into a domain manifest.
+  PluginManifest parseManifest(Map<String, Object?> json) {
     return PluginManifest.fromJson(json);
   }
 }

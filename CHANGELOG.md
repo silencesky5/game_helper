@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.5.0
+
+### Plugin System Foundation
+
+- Added Plugin System Foundation.
+- Added plugin domain, manifest, repository, and manager foundations.
+- Added plugin scanner and loader stubs.
+- Added plugin architecture documentation.
+
 ## v0.4.0
 
 ### Device Layer Foundation

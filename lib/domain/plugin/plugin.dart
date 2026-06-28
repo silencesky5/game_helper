@@ -15,11 +15,11 @@ class Plugin {
   /// Short plugin description.
   final String description;
 
-  /// Optional icon asset or symbolic icon identifier.
-  final String icon;
-
   /// Whether the plugin is enabled in the platform.
   final bool enabled;
+
+  /// Plugin root path.
+  final String path;
 
   /// Creates immutable plugin metadata.
   const Plugin({
@@ -28,7 +28,7 @@ class Plugin {
     required this.version,
     required this.author,
     required this.description,
-    required this.icon,
     required this.enabled,
+    required this.path,
   });
 }

@@ -25,7 +25,7 @@ class PluginManifest {
   });
 
   /// Creates a manifest from decoded JSON data.
-  factory PluginManifest.fromJson(Map<String, dynamic> json) {
+  factory PluginManifest.fromJson(Map<String, Object?> json) {
     return PluginManifest(
       id: json['id'] as String,
       name: json['name'] as String,
@@ -36,8 +36,8 @@ class PluginManifest {
   }
 
   /// Converts this manifest to JSON-compatible data.
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
+  Map<String, Object?> toJson() {
+    return <String, Object?>{
       'id': id,
       'name': name,
       'version': version,
