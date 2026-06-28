@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.6.0
+
+### Automation Runtime Kernel
+
+- Added the pure Dart Automation Runtime Kernel.
+- Added AutomationEngine lifecycle orchestration stubs.
+- Added immutable AutomationSession runtime state.
+- Added immutable AutomationContext dependency bundle.
+- Added AutomationState lifecycle enum.
+- Added SPEC-006 and ADR-0002 documentation.
+
 ## v0.4.0
 
 ### Device Layer Foundation
