@@ -1,20 +1,22 @@
 import 'dart:io';
 
-/// Runs adb commands for the infrastructure device implementation.
+import 'adb_manager.dart';
+
+/// Runs adb commands through the centralized ADB manager.
 class AdbCommandRunner {
   /// Creates an adb command runner.
-  const AdbCommandRunner({this.executable = 'adb'});
+  const AdbCommandRunner({required this.adbManager});
 
-  /// ADB executable path or command name.
-  final String executable;
+  /// Centralized ADB process manager.
+  final ADBManager adbManager;
 
   /// Runs adb with [arguments].
   Future<ProcessResult> run(List<String> arguments) {
-    return Process.run(executable, arguments);
+    return adbManager.execute(arguments);
   }
 
   /// Runs adb and preserves stdout as raw bytes for binary commands.
   Future<ProcessResult> runBinary(List<String> arguments) {
-    return Process.run(executable, arguments, stdoutEncoding: null);
+    return adbManager.execute(arguments, binary: true);
   }
 }

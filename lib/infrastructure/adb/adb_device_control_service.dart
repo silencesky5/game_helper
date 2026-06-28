@@ -6,10 +6,12 @@ import '../../domain/device/device.dart';
 import '../../domain/logger/logger.dart';
 import '../../domain/logger/logger_service.dart';
 import 'adb_command_runner.dart';
+import 'adb_manager.dart';
 
 /// ADB-backed implementation of Android input and app lifecycle commands.
 class AdbDeviceControlService implements DeviceControlService {
-  const AdbDeviceControlService({this.commandRunner = const AdbCommandRunner(), this.logger});
+  AdbDeviceControlService({AdbCommandRunner? commandRunner, ADBManager? adbManager, this.logger})
+      : commandRunner = commandRunner ?? AdbCommandRunner(adbManager: adbManager ?? ADBManager(logger: logger));
 
   final AdbCommandRunner commandRunner;
   final LoggerService? logger;
