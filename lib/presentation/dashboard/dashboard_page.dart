@@ -151,6 +151,10 @@ class _SettingsCard extends StatelessWidget {
                   child: Text(context.l10n.traditionalChinese),
                 ),
                 DropdownMenuItem<AppLanguage>(
+                  value: AppLanguage.zh,
+                  child: Text(context.l10n.traditionalChinese),
+                ),
+                DropdownMenuItem<AppLanguage>(
                   value: AppLanguage.en,
                   child: Text(context.l10n.english),
                 ),
