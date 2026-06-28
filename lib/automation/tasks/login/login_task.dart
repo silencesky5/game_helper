@@ -1,4 +1,5 @@
 import '../../engine/game_task.dart';
+import '../../engine/image_detector.dart';
 import '../../models/task_context.dart';
 import '../../models/task_result.dart';
 
@@ -12,13 +13,17 @@ class LoginTask extends GameTask {
 
   @override
   Future<TaskResult> execute(TaskContext context) async {
-    if (await context.stateManager.isHomeScene()) {
+    final initialScene = await context.stateManager.detectScene();
+    if (initialScene == Scene.home || await context.stateManager.isHomeScene()) {
       return const TaskResult.success('GrowStone home scene already detected');
     }
 
-    if (await context.stateManager.hasGrowStoneIcon()) {
-      context.log('GrowStone icon detected on Android desktop');
+    if (initialScene != Scene.android &&
+        !await context.stateManager.hasGrowStoneIcon()) {
+      return const TaskResult.retry('GrowStone is not on Android desktop');
     }
+
+    context.log('GrowStone icon detected on Android desktop');
 
     await context.actionController.launchGame(
       context.emulator,
@@ -26,10 +31,14 @@ class LoginTask extends GameTask {
     );
 
     final loaded = await context.actionController.waitSceneChange(() async {
-      if (await context.stateManager.isLoadingScene()) {
+      final scene = await context.stateManager.detectScene();
+      if (scene == Scene.loading) {
         return false;
       }
-      return context.stateManager.isHomeScene();
+      if (scene == Scene.attendance) {
+        return false;
+      }
+      return scene == Scene.home || await context.stateManager.isHomeScene();
     });
 
     if (!loaded) {

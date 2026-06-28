@@ -1,3 +1,4 @@
+import 'image_detector.dart';
 import '../models/task_context.dart';
 import '../models/task_result.dart';
 
@@ -52,11 +53,15 @@ class AttendancePopupHandler {
   /// Attendance requires title, receive-all button, and close button templates.
   Future<bool> detect(TaskContext context) async {
     final detector = context.stateManager.imageDetector;
-    final hasTitle = await detector.findTemplate('attendance_check_title');
-    final hasReceiveAll = await detector.findTemplate(
-      'attendance_receive_all_button',
+    final hasTitle = await detector.findTemplate(
+      VisionTemplates.attendanceTitle,
     );
-    final hasClose = await detector.findTemplate('attendance_close_button');
+    final hasReceiveAll = await detector.findTemplate(
+      VisionTemplates.attendanceReceiveAll,
+    );
+    final hasClose = await detector.findTemplate(
+      VisionTemplates.attendanceCloseButton,
+    );
     return hasTitle && hasReceiveAll && hasClose;
   }
 
@@ -68,13 +73,13 @@ class AttendancePopupHandler {
       }
 
       final receiveRect = await context.stateManager.imageDetector
-          .findTemplateRect('attendance_receive_all_button');
+          .findTemplateRect(VisionTemplates.attendanceReceiveAll);
       if (receiveRect == null) {
         return const TaskResult.retry('Attendance receive-all button disappeared');
       }
 
       final enabled = await context.stateManager.imageDetector.isTemplateBright(
-        'attendance_receive_all_button',
+        VisionTemplates.attendanceReceiveAll,
       );
       if (enabled) {
         context.log(
@@ -82,8 +87,8 @@ class AttendancePopupHandler {
         );
         await context.actionController.randomTap(context.emulator, receiveRect);
         await context.actionController.randomDelay(
-          min: const Duration(milliseconds: 500),
-          max: const Duration(milliseconds: 1000),
+          min: const Duration(milliseconds: 300),
+          max: const Duration(milliseconds: 700),
         );
         continue;
       }
@@ -98,17 +103,17 @@ class AttendancePopupHandler {
 
   Future<void> _close(TaskContext context) async {
     final closeRect = await context.stateManager.imageDetector.findTemplateRect(
-      'attendance_close_button',
+      VisionTemplates.attendanceCloseButton,
     );
     if (closeRect != null) {
       await context.actionController.randomTap(context.emulator, closeRect);
       await context.actionController.randomDelay(
-        min: const Duration(milliseconds: 250),
-        max: const Duration(milliseconds: 450),
+        min: const Duration(milliseconds: 300),
+        max: const Duration(milliseconds: 700),
       );
       await context.actionController.waitSceneChange(
         () async =>
-            !await detect(context) || context.stateManager.currentScene() == 'home',
+            !await detect(context) || await context.stateManager.isHomeScene(),
       );
     }
   }

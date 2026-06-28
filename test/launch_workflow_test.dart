@@ -17,11 +17,11 @@ void main() {
   test('attendance popup receives reward and closes with random taps', () async {
     final detector = _FakeImageDetector(
       templates: <String>{
-        'attendance_check_title',
-        'attendance_receive_all_button',
-        'attendance_close_button',
+        VisionTemplates.attendanceTitle,
+        VisionTemplates.attendanceReceiveAll,
+        VisionTemplates.attendanceCloseButton,
       },
-      brightTemplates: <String>{'attendance_receive_all_button'},
+      brightTemplates: <String>{VisionTemplates.attendanceReceiveAll},
     );
     var tapCount = 0;
     final actions = _FakeActionController(
@@ -48,11 +48,33 @@ void main() {
       detector.receiveAllRect,
       detector.closeRect,
     ]);
-    expect(detector.templates, isNot(contains('attendance_check_title')));
+    expect(detector.templates, isNot(contains(VisionTemplates.attendanceTitle)));
   });
 
+  test(
+    'minimum vision system detects home only when all fixed buttons exist',
+    () async {
+      final detector = _FakeImageDetector(
+        templates: <String>{
+          VisionTemplates.homeBag,
+          VisionTemplates.homeShop,
+          VisionTemplates.homeMail,
+          VisionTemplates.homeCraft,
+        },
+      );
+
+      expect(await detector.detectScene(), Scene.home);
+
+      detector.templates.remove(VisionTemplates.homeCraft);
+
+      expect(await detector.detectScene(), Scene.unknown);
+    },
+  );
+
   test('launch task starts GrowStone and waits for home scene', () async {
-    final detector = _FakeImageDetector(templates: <String>{'growstone_icon'});
+    final detector = _FakeImageDetector(
+      templates: <String>{VisionTemplates.androidGrowstoneIcon},
+    );
     final stateManager = StateManager(imageDetector: detector);
     final actions = _FakeActionController(
       onWaitSceneChange: () => stateManager.update(
@@ -89,8 +111,8 @@ class _FakeImageDetector extends ImageDetector {
   @override
   Future<Rectangle<int>?> findTemplateRect(String templateId) async {
     return switch (templateId) {
-      'attendance_receive_all_button' => receiveAllRect,
-      'attendance_close_button' => closeRect,
+      VisionTemplates.attendanceReceiveAll => receiveAllRect,
+      VisionTemplates.attendanceCloseButton => closeRect,
       _ => null,
     };
   }
@@ -100,14 +122,14 @@ class _FakeImageDetector extends ImageDetector {
       brightTemplates.contains(templateId);
 
   void markReceived() {
-    brightTemplates.remove('attendance_receive_all_button');
+    brightTemplates.remove(VisionTemplates.attendanceReceiveAll);
   }
 
   void markClosed() {
     templates
-      ..remove('attendance_check_title')
-      ..remove('attendance_receive_all_button')
-      ..remove('attendance_close_button');
+      ..remove(VisionTemplates.attendanceTitle)
+      ..remove(VisionTemplates.attendanceReceiveAll)
+      ..remove(VisionTemplates.attendanceCloseButton);
   }
 }
 
