@@ -94,7 +94,7 @@ class AutomationController extends ChangeNotifier {
       Workflow? workflow;
       if (plugin != null) {
         workflow = await context.pluginManager.getWorkflow(plugin);
-        context.loggerService.log(LogLevel.info, 'Plugin Loading complete: ${plugin.name}');
+        context.loggerService.log(LogLevel.info, 'Plugin Loading complete: ${plugin.displayName} (${plugin.name})');
       }
       for (final timer in _screenshotTimers.values) {
         timer.cancel();
@@ -233,7 +233,18 @@ class AutomationController extends ChangeNotifier {
     );
     _replaceSession(session.id, updated);
     _automationEngine.context.sessionManager.updateSession(updated);
-    _automationEngine.context.loggerService.log(LogLevel.info, 'Plugin assigned: ${session.device.name} → ${plugin?.name ?? '未指定'}');
+    _automationEngine.context.loggerService.log(LogLevel.info, 'Plugin assigned: ${session.device.name} → ${plugin?.displayName ?? '未指定'}');
+  }
+
+
+  /// Selects a task profile independently for one device session.
+  void assignTaskProfile(AutomationSession session, String taskProfileId) {
+    final profiles = session.plugin?.implementation?.createTaskProfiles() ?? const <TaskProfile>[];
+    final TaskProfile? profile = profiles.where((TaskProfile item) => item.id == taskProfileId).firstOrNull;
+    if (profile == null) return;
+    final updated = session.copyWith(taskProfile: profile, workflow: profile.workflow);
+    _replaceSession(session.id, updated);
+    _automationEngine.context.loggerService.log(LogLevel.info, 'Task Profile selected: ${session.device.name} → ${profile.name}');
   }
 
   void _replaceSession(String sessionId, AutomationSession updated) {

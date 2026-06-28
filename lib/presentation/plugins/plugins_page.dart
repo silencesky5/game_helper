@@ -57,12 +57,14 @@ class _PluginsPageState extends State<PluginsPage> {
               return Card(
                 child: ListTile(
                   leading: const Icon(Icons.extension),
-                  title: Text(plugin.name),
+                  title: Text(plugin.displayName),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
+                      Text('Internal Name: ${plugin.name}'),
                       Text(context.l10n.version(plugin.version)),
                       Text(plugin.enabled ? context.l10n.enabled : context.l10n.disabled),
+                      Text('Author: ${plugin.author}'),
                     ],
                   ),
                 ),

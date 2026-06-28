@@ -12,7 +12,13 @@ enum AppLanguage {
   zhTw(Locale('zh', 'TW'), 'zh_TW'),
 
   /// English.
-  en(Locale('en'), 'en');
+  en(Locale('en'), 'en'),
+
+  /// Japanese.
+  ja(Locale('ja'), 'ja'),
+
+  /// Korean.
+  ko(Locale('ko'), 'ko');
 
   const AppLanguage(this.locale, this.preferenceValue);
 

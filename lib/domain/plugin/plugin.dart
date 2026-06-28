@@ -7,8 +7,11 @@ abstract class GamePlugin {
   /// Unique plugin identifier.
   String get id;
 
-  /// Human-readable plugin name.
+  /// Internal plugin implementation name.
   String get name;
+
+  /// Localized user-facing plugin display name.
+  String get displayName => name;
 
   /// Called when the plugin is loaded into the platform.
   Future<void> onLoad();
@@ -34,8 +37,11 @@ class Plugin {
   /// Unique plugin identifier.
   final String id;
 
-  /// Human-readable plugin name.
+  /// Internal plugin implementation name.
   final String name;
+
+  /// Localized user-facing plugin display name.
+  final String displayName;
 
   /// Plugin semantic version string.
   final String version;
@@ -59,11 +65,12 @@ class Plugin {
   const Plugin({
     required this.id,
     required this.name,
+    String? displayName,
     required this.version,
     required this.author,
     required this.description,
     required this.icon,
     required this.enabled,
     this.implementation,
-  });
+  }) : displayName = displayName ?? name;
 }

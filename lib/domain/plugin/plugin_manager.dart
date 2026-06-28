@@ -103,7 +103,10 @@ class MineJourneyPlugin implements GamePlugin {
   String get id => 'mine_journey';
 
   @override
-  String get name => 'Mine Journey';
+  String get name => 'MineJourneyPlugin';
+
+  @override
+  String get displayName => '礦山之旅';
 
   @override
   Future<void> onLoad() async {}
@@ -126,8 +129,26 @@ class MineJourneyPlugin implements GamePlugin {
         ),
         TaskProfile(
           id: 'mining',
-          name: '採礦',
+          name: '純採礦',
           description: '登入、採礦、販售、採礦。',
+          workflow: createWorkflow(),
+        ),
+        TaskProfile(
+          id: 'boss',
+          name: 'Boss',
+          description: '登入、Boss、採礦、整理背包。',
+          workflow: createWorkflow(),
+        ),
+        TaskProfile(
+          id: 'event',
+          name: '活動',
+          description: '登入、活動、Boss、採礦。',
+          workflow: createWorkflow(),
+        ),
+        TaskProfile(
+          id: 'custom',
+          name: '自訂...',
+          description: '未來可透過 Workflow Editor 自訂。',
           workflow: createWorkflow(),
         ),
       ];
@@ -161,7 +182,8 @@ class MockPluginRepository implements PluginRepository {
     return const <Plugin>[
       Plugin(
         id: 'unassigned',
-        name: '未指定',
+        name: 'UnassignedPlugin',
+        displayName: '未指定',
         version: 'N/A',
         author: 'Game Helper Platform',
         description: 'No game plugin is assigned to this device.',
@@ -170,7 +192,8 @@ class MockPluginRepository implements PluginRepository {
       ),
       Plugin(
         id: 'mine_journey',
-        name: 'Mine Journey',
+        name: 'MineJourneyPlugin',
+        displayName: '礦山之旅',
         version: '1.0.0',
         author: 'Game Helper Team',
         description: 'Mine Journey MVP launch and wait-main-menu pipeline.',
@@ -180,7 +203,8 @@ class MockPluginRepository implements PluginRepository {
       ),
       Plugin(
         id: 'lineage_m',
-        name: '天堂M',
+        name: 'LineageMPlugin',
+        displayName: '天堂M',
         version: 'Not installed',
         author: 'Plugin Marketplace',
         description: 'Marketplace placeholder for a future Lineage M plugin.',
@@ -189,7 +213,8 @@ class MockPluginRepository implements PluginRepository {
       ),
       Plugin(
         id: 'ro',
-        name: 'RO',
+        name: 'ROPlugin',
+        displayName: 'RO',
         version: 'Not installed',
         author: 'Plugin Marketplace',
         description: 'Marketplace placeholder for a future RO plugin.',
@@ -198,7 +223,8 @@ class MockPluginRepository implements PluginRepository {
       ),
       Plugin(
         id: 'maplestory_m',
-        name: '楓之谷M',
+        name: 'MapleStoryMPlugin',
+        displayName: '楓之谷M',
         version: 'Not installed',
         author: 'Plugin Marketplace',
         description: 'Marketplace placeholder for a future MapleStory M plugin.',
