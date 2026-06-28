@@ -1,6 +1,7 @@
 import '../device/device.dart';
 import '../logger/logger_service.dart';
 import '../plugin/plugin.dart';
+import '../plugin/game_profile.dart';
 import '../workflow/workflow.dart';
 import '../workflow/workflow_runtime.dart';
 import 'automation_state.dart';
@@ -14,6 +15,8 @@ class AutomationSession {
     this.plugin,
     this.workflow,
     this.workflowRuntime,
+    this.character = const CharacterProfile.notLoggedIn(),
+    this.taskProfile,
     this.state = AutomationState.idle,
     this.logger,
     this.startedAt,
@@ -35,6 +38,12 @@ class AutomationSession {
   /// Workflow runtime state associated with the session, if one exists.
   final WorkflowRuntime? workflowRuntime;
 
+  /// Character detected by the current plugin.
+  final CharacterProfile character;
+
+  /// Selected task profile for this device/character runtime.
+  final TaskProfile? taskProfile;
+
   /// Current automation lifecycle state.
   final AutomationState state;
 
@@ -54,6 +63,8 @@ class AutomationSession {
     Plugin? plugin,
     Workflow? workflow,
     WorkflowRuntime? workflowRuntime,
+    CharacterProfile? character,
+    TaskProfile? taskProfile,
     AutomationState? state,
     LoggerService? logger,
     DateTime? startedAt,
@@ -65,6 +76,8 @@ class AutomationSession {
       plugin: plugin ?? this.plugin,
       workflow: workflow ?? this.workflow,
       workflowRuntime: workflowRuntime ?? this.workflowRuntime,
+      character: character ?? this.character,
+      taskProfile: taskProfile ?? this.taskProfile,
       state: state ?? this.state,
       logger: logger ?? this.logger,
       startedAt: startedAt ?? this.startedAt,
