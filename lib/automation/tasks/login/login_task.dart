@@ -18,6 +18,7 @@ class LoginTask extends GameTask {
   @override
   Future<TaskResult> execute(TaskContext context) async {
     final initialScene = await context.stateManager.detectScene();
+    context.log('Scene ${initialScene.name}');
     if (initialScene == Scene.home || await context.stateManager.isHomeScene()) {
       return const TaskResult.success('GrowStone home scene already detected');
     }
@@ -26,7 +27,7 @@ class LoginTask extends GameTask {
       return const TaskResult.retry('GrowStone is not on Android desktop');
     }
 
-    context.log('Android desktop detected; launching GrowStone through Navigator');
+    context.log('Launch GrowStone');
     if (!await navigator.launchGame(context)) {
       return const TaskResult.retry(
         'GrowStone launch did not enter a known game scene',

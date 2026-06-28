@@ -8,6 +8,7 @@ import 'package:game_helper/automation/engine/state_manager.dart';
 import 'package:game_helper/automation/models/task_context.dart';
 import 'package:game_helper/automation/models/task_result.dart';
 import 'package:game_helper/automation/tasks/login/login_task.dart';
+import 'package:game_helper/automation/tasks/launch/launch_task.dart';
 import 'package:game_helper/automation/navigation/navigation_service.dart';
 import 'package:game_helper/emulator/emulator.dart';
 
@@ -99,6 +100,23 @@ void main() {
 
     expect(result.status, TaskResultStatus.success);
     expect(actions.tapRects, <Rectangle<int>>[detector.growStoneIconRect]);
+  });
+
+
+
+  test('launch task retries launch flow three times before failing', () async {
+    final detector = _FakeImageDetector(templates: <String>{});
+    final context = TaskContext(
+      emulator: emulator,
+      stateManager: StateManager(imageDetector: detector),
+      actionController: _FakeActionController(),
+      log: (_) {},
+    );
+
+    final result = await const LaunchTask().execute(context);
+
+    expect(result.status, TaskResultStatus.failed);
+    expect(result.message, 'Launch Failed');
   });
 
   test('navigation waitHome handles attendance before succeeding at home', () async {

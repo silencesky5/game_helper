@@ -1,10 +1,11 @@
-import '../decision/decision_engine.dart';
-import '../decision/goal.dart';
+import '../../automation/engine/action_controller.dart' as launch_runtime;
+import '../../automation/engine/state_manager.dart' as launch_runtime;
+import '../../automation/models/task_context.dart' as launch_runtime;
+import '../../automation/models/task_result.dart' as launch_result;
+import '../../automation/tasks/launch/launch_task.dart';
+import '../../emulator/emulator.dart';
 import '../device/device.dart';
 import '../logger/logger.dart';
-import '../plugin/plugin.dart';
-import '../workflow/workflow.dart';
-import '../workflow/workflow_runtime.dart';
 import 'automation_context.dart';
 import 'automation_session.dart';
 import 'automation_state.dart';
@@ -25,77 +26,70 @@ class AutomationEngine {
     return context.sessionManager.createSession(device);
   }
 
-  /// Runs the Sprint 1 end-to-end execution pipeline for [pluginId].
+  /// Runs the SPEC-008 version-1 launch-only automation pipeline.
+  ///
+  /// This intentionally bypasses queues, schedulers, workflows, and plugins:
+  /// `AutomationEngine.start()` creates/uses sessions, runs [LaunchTask], and
+  /// stops as soon as GrowStone Home is detected.
   Future<List<AutomationSession>> start(String pluginId) async {
-    context.loggerService.log(LogLevel.info, 'Detecting ADB devices');
+    context.loggerService.log(LogLevel.info, 'Automation Start');
     final List<Device> devices = await context.deviceManager.detectDevices();
 
-    if (context.pluginManager.plugins.isEmpty) {
-      await context.pluginManager.initialize();
-    }
-
-    final Plugin? plugin = context.pluginManager.getPlugin(pluginId);
-    if (plugin == null) {
-      throw StateError('Plugin not found: $pluginId');
-    }
-    context.loggerService.log(LogLevel.info, 'Loaded plugin: ${plugin.name}');
-
-    final List<Device> demoDevices = devices.isEmpty ? _fallbackDemoDevices() : devices;
+    final List<Device> activeDevices = devices.isEmpty ? _fallbackDemoDevices() : devices;
     final List<AutomationSession> sessions = <AutomationSession>[];
 
-    for (final Device device in demoDevices) {
+    for (final Device device in activeDevices.where((Device device) => device.isOnline)) {
       final AutomationSession existingSession = context.sessionManager.sessions.where((AutomationSession item) => item.device.id == device.id).firstOrNull ?? createSession(device);
-      final AutomationSession session = existingSession;
-      final Workflow workflow = await context.pluginManager.getWorkflow(plugin);
-      final WorkflowRuntime runtime = WorkflowRuntime(context: context);
-      final AutomationSession runningSession = startSession(
-        session.copyWith(
-          plugin: plugin,
-          workflow: workflow,
-          workflowRuntime: runtime,
+      var session = startSession(
+        existingSession.copyWith(
           startedAt: DateTime.now(),
-          currentStep: workflow.steps.isEmpty ? 'No steps' : workflow.steps.first.id,
+          currentStep: 'Launch Game',
+          nextStep: 'Detect Scene',
+          currentScene: 'Unknown',
         ),
       );
-      context.sessionManager.updateSession(runningSession);
-      final screenshotResult = await context.screenshotService.capture(device);
-      await screenshotResult.fold(
-        (screenshot) async {
-          context.screenshotRepository.save(screenshot);
-          final perception = await context.perceptionService.analyze(device.id);
-          if (perception != null) {
-            runtime.setVariable('perceptionResult', perception);
-            context.workflowEngine.runtime.setVariable('perceptionResult', perception);
-          }
-        },
-        (error) async => context.loggerService.log(LogLevel.error, '[ADB] Capture Screenshot failed: ${error.message}'),
-      );
-      sessions.add(runningSession);
+      context.sessionManager.updateSession(session);
 
-      context.workflowEngine.runtime.context = context;
-      final enabledActionIds = runningSession.automationConfig?.enabledActions.entries
-              .where((MapEntry<String, bool> entry) => entry.value)
-              .map((MapEntry<String, bool> entry) => entry.key)
-              .join(' → ') ??
-          'plugin defaults';
-      context.loggerService.log(LogLevel.info, 'Starting ${runningSession.id} on ${device.name} with Automation Logic: $enabledActionIds');
-      final List<Goal> goals = plugin.implementation?.createGoals() ?? const <Goal>[];
-      final DecisionEngine decisionEngine = DecisionEngine(
-        context: context,
-        config: context.decisionConfig,
-        repository: context.decisionRepository,
-      );
-      if (goals.isEmpty) {
-        await context.workflowEngine.execute(workflow);
-      } else {
-        for (final Goal goal in goals) {
-          await decisionEngine.executeGoal(runningSession, goal);
-        }
+      void updateRuntime({String? task, String? nextStep, String? scene}) {
+        session = session.copyWith(
+          currentStep: task,
+          nextStep: nextStep,
+          currentScene: scene,
+        );
+        context.sessionManager.updateSession(session);
       }
-      context.sessionManager.updateSession(
-        runningSession.copyWith(state: AutomationState.completed, currentStep: 'Finished'),
+
+      final taskContext = launch_runtime.TaskContext(
+        emulator: Emulator(id: device.id, name: device.name, adbPort: 0),
+        stateManager: launch_runtime.StateManager(),
+        actionController: launch_runtime.ActionController(),
+        log: (String message) {
+          context.loggerService.log(LogLevel.info, message);
+          final lower = message.toLowerCase();
+          if (lower.contains('android')) updateRuntime(scene: 'Android', nextStep: 'Launch GrowStone');
+          if (lower.contains('launch')) updateRuntime(task: 'Launch Game', nextStep: 'Waiting Home');
+          if (lower.contains('loading')) updateRuntime(scene: 'Loading', nextStep: 'Waiting Loading');
+          if (lower.contains('attendance')) updateRuntime(scene: 'Attendance', nextStep: 'Handle Popup');
+          if (lower.contains('home')) updateRuntime(scene: 'Home', nextStep: 'Finish');
+        },
       );
-      context.loggerService.log(LogLevel.info, '${runningSession.id} finished');
+
+      final result = await const LaunchTask().execute(taskContext);
+      if (result.status == launch_result.TaskResultStatus.success) {
+        updateRuntime(task: 'Launch Complete', nextStep: 'Stop', scene: 'Home');
+        session = session.copyWith(state: AutomationState.completed);
+        context.sessionManager.updateSession(session);
+        context.loggerService.log(LogLevel.info, 'Launch Success');
+      } else {
+        session = session.copyWith(
+          state: AutomationState.failed,
+          currentStep: 'Launch Failed',
+          nextStep: 'Stop',
+        );
+        context.sessionManager.updateSession(session);
+        context.loggerService.log(LogLevel.error, 'Launch Failed: ${result.message}');
+      }
+      sessions.add(session);
     }
 
     return context.sessionManager.sessions;

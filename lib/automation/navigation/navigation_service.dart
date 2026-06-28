@@ -63,10 +63,8 @@ class NavigationService {
     while (DateTime.now().isBefore(deadline)) {
       final scene = await context.stateManager.detectScene();
       if (scene != Scene.loading) return true;
-      await context.actionController.randomDelay(
-        min: const Duration(milliseconds: 500),
-        max: const Duration(milliseconds: 1000),
-      );
+      context.log('Scene Loading');
+      await context.actionController.wait(const Duration(milliseconds: 300));
     }
     context.log('Navigation waitLoading timed out after 30 seconds');
     return false;
@@ -79,9 +77,11 @@ class NavigationService {
     while (DateTime.now().isBefore(deadline)) {
       final scene = await context.stateManager.detectScene();
       if (scene == Scene.home) {
+        context.log('Scene Home');
         return true;
       }
       if (scene == Scene.attendance) {
+        context.log('Attendance Popup');
         await closePopup(context);
         unknownRetries = 0;
         continue;

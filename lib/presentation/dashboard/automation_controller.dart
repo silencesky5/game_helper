@@ -116,6 +116,8 @@ class AutomationController extends ChangeNotifier {
           workflowRuntime: WorkflowRuntime(context: context),
           startedAt: DateTime.now(),
           currentStep: 'Device Monitor',
+          nextStep: 'Waiting',
+          currentScene: 'Unknown',
         );
         context.sessionManager.updateSession(session);
         sessions.add(session);
@@ -228,9 +230,13 @@ class AutomationController extends ChangeNotifier {
     final Plugin? plugin = _automationEngine.context.pluginManager.getPlugin(pluginId);
     Workflow? workflow;
     String currentStep = 'Plugin Unassigned';
+    String nextStep = 'Waiting';
+    String currentScene = session.currentScene;
     if (plugin != null && plugin.implementation != null) {
       workflow = await _automationEngine.context.pluginManager.getWorkflow(plugin);
       currentStep = 'Device Monitor';
+      nextStep = 'Waiting';
+      currentScene = 'Unknown';
     }
 
     final updated = AutomationSession(
@@ -243,6 +249,8 @@ class AutomationController extends ChangeNotifier {
       logger: session.logger,
       startedAt: session.startedAt,
       currentStep: currentStep,
+      nextStep: nextStep,
+      currentScene: currentScene,
       taskProfile: _firstTaskProfile(plugin),
       automationConfig: await _automationConfigFor(session.device.id, plugin),
       character: const CharacterProfile.notLoggedIn(),
