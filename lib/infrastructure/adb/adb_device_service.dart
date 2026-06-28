@@ -1,5 +1,6 @@
 import '../../domain/device/device.dart';
 import '../../domain/device/device_service.dart';
+import '../../domain/device/screen_size.dart';
 import 'adb_command_runner.dart';
 
 /// ADB-backed device service for Android automation.
@@ -62,7 +63,10 @@ class AdbDeviceService implements DeviceService {
 
   /// Stubbed screen-size operation.
   @override
-  Future<(int width, int height)> getScreenSize() async {
-    return (width: 0, height: 0);
+  Future<ScreenSize> getScreenSize() async {
+    return const ScreenSize(
+      width: 0,
+      height: 0,
+    );
   }
 }

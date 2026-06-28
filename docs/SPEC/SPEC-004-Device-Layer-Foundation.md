@@ -65,7 +65,7 @@ The following service methods are intentionally placeholder implementations in t
 
 - `getDevices()` returns an empty device list.
 - `screenshot()` returns an empty string.
-- `getScreenSize()` returns `(width: 0, height: 0)`.
+- `getScreenSize()` returns `ScreenSize(width: 0, height: 0)`.
 
 ## Device Layer Rules
 
