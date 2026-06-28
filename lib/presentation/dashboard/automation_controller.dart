@@ -21,7 +21,10 @@ import '../../domain/logger/logger.dart';
 import '../../infrastructure/adb/adb_device_control_service.dart';
 import '../../infrastructure/adb/adb_device_service.dart';
 import '../../infrastructure/adb/adb_screenshot_service.dart';
-import '../../infrastructure/logger/console_logger.dart';
+import '../../domain/plugin/plugin.dart';
+import '../../domain/workflow/workflow.dart';
+import '../../domain/workflow/workflow_runtime.dart';
+import '../../infrastructure/logger/desktop_console_logger.dart';
 import '../../infrastructure/storage/local_storage.dart';
 import '../../domain/screenshot/screenshot_repository.dart';
 import '../../domain/vision/vision_config.dart';
@@ -36,11 +39,15 @@ class AutomationController extends ChangeNotifier {
 
   final AutomationEngine _automationEngine;
   bool _running = false;
+  bool _detecting = false;
   List<AutomationSession> _sessions = const <AutomationSession>[];
   final Map<String, Timer> _screenshotTimers = <String, Timer>{};
 
   /// Whether an automation run has been started from the dashboard.
   bool get running => _running;
+
+  /// Whether the console is detecting ADB devices.
+  bool get detecting => _detecting;
 
   /// Sessions shown by the desktop console.
   List<AutomationSession> get sessions => _sessions;
@@ -53,8 +60,58 @@ class AutomationController extends ChangeNotifier {
 
   DecisionRepository get decisionRepository => _automationEngine.context.decisionRepository;
 
+  List<String> get logs {
+    final logger = _automationEngine.context.loggerService;
+    return logger is DesktopConsoleLogger ? logger.entries : const <String>[];
+  }
+
+  /// Detects connected ADB devices and creates desktop sessions without running workflows.
+  Future<void> initializeDesktopConsole() async {
+    _detecting = true;
+    notifyListeners();
+    try {
+      final context = _automationEngine.context;
+      context.loggerService.log(LogLevel.info, 'Desktop Console → Automation Engine → ADB Device Detection');
+      final devices = await context.deviceManager.detectDevices();
+      context.sessionManager.clear();
+      if (context.pluginManager.plugins.isEmpty) {
+        await context.pluginManager.initialize();
+      }
+      final Plugin? plugin = context.pluginManager.getPlugin('mine_journey');
+      Workflow? workflow;
+      if (plugin != null) {
+        workflow = await context.pluginManager.getWorkflow(plugin);
+        context.loggerService.log(LogLevel.info, 'Plugin Loading complete: ${plugin.name}');
+      }
+      _sessions = devices.map((device) {
+        final session = context.sessionManager.createSession(device).copyWith(
+          plugin: plugin,
+          workflow: workflow,
+          workflowRuntime: WorkflowRuntime(context: context),
+          currentStep: 'Detected',
+        );
+        context.sessionManager.updateSession(session);
+        return session;
+      }).toList(growable: false);
+      context.loggerService.log(LogLevel.info, 'Session Creation complete: ${_sessions.length} ADB device(s) detected');
+    } finally {
+      _detecting = false;
+      notifyListeners();
+    }
+  }
+
   /// Starts the Mine Journey automation pipeline.
   Future<void> start() async {
+    if (_sessions.isEmpty) {
+      await initializeDesktopConsole();
+    }
+    if (_sessions.isEmpty) {
+      _automationEngine.context.loggerService.log(
+        LogLevel.warning,
+        'Automation start blocked: no connected ADB devices detected.',
+      );
+      return;
+    }
     _running = true;
     notifyListeners();
 
@@ -127,7 +184,7 @@ class AutomationController extends ChangeNotifier {
     final PluginManager pluginManager = PluginManager();
     final WorkflowEngine workflowEngine = WorkflowEngine();
     final DeviceManager deviceManager = DeviceManager(const AdbDeviceService());
-    final ConsoleLogger loggerService = ConsoleLogger();
+    final DesktopConsoleLogger loggerService = DesktopConsoleLogger();
     final LocalStorage storageService = LocalStorage();
     final SessionManager sessionManager = SessionManager();
     final ScreenshotRepository screenshotRepository = ScreenshotRepository();

@@ -1,5 +1,5 @@
 name: game_helper
-description: "A new Flutter project."
+description: "Windows desktop console for controlling LDPlayer Mine Journey sessions through ADB."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
