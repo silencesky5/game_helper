@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.4.0
+
+### Device Layer Foundation
+
+- Added Device Layer Foundation.
+- Added ADB Tap.
+- Added ADB Swipe.
+- Added ADB Input.
+- Added ADB KeyEvent.
+
 ## v0.3.0
 
 ### Workflow Step System
