@@ -9,5 +9,7 @@ class AdbDevice extends Device {
     required super.status,
     super.model,
     super.androidVersion,
+    super.manufacturer,
+    super.resolution,
   });
 }

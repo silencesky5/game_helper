@@ -22,6 +22,8 @@ class Device {
     required this.status,
     this.model = 'Unknown',
     this.androidVersion = 'Unknown',
+    this.manufacturer = 'Unknown',
+    this.resolution = 'Unknown',
   });
 
   /// Unique device identifier reported by the device provider.
@@ -36,6 +38,12 @@ class Device {
   /// Android OS version running on the device.
   final String androidVersion;
 
+  /// Device manufacturer reported by Android.
+  final String manufacturer;
+
+  /// Physical screen resolution reported by Android.
+  final String resolution;
+
   /// Current device connection status.
   final DeviceStatus status;
 
@@ -48,6 +56,8 @@ class Device {
     String? name,
     String? model,
     String? androidVersion,
+    String? manufacturer,
+    String? resolution,
     DeviceStatus? status,
   }) {
     return Device(
@@ -55,6 +65,8 @@ class Device {
       name: name ?? this.name,
       model: model ?? this.model,
       androidVersion: androidVersion ?? this.androidVersion,
+      manufacturer: manufacturer ?? this.manufacturer,
+      resolution: resolution ?? this.resolution,
       status: status ?? this.status,
     );
   }

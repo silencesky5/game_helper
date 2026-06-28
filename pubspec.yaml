@@ -61,6 +61,7 @@ flutter:
     - config/vision.json
     - config/perception.json
     - config/decision.json
+    - config/desktop_console.json
     - assets/templates/
 
   # To add assets to your application, add an assets section, like this:

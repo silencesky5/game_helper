@@ -30,6 +30,7 @@ import '../../domain/screenshot/screenshot_repository.dart';
 import '../../domain/vision/vision_config.dart';
 import '../../domain/vision/vision_repository.dart';
 import '../../domain/vision/vision_service.dart';
+import 'desktop_console_config.dart';
 
 /// Presentation controller for starting the automation pipeline.
 class AutomationController extends ChangeNotifier {
@@ -42,6 +43,7 @@ class AutomationController extends ChangeNotifier {
   bool _detecting = false;
   List<AutomationSession> _sessions = const <AutomationSession>[];
   final Map<String, Timer> _screenshotTimers = <String, Timer>{};
+  final DesktopConsoleConfig _desktopConfig = DesktopConsoleConfig.loadSync();
 
   /// Whether an automation run has been started from the dashboard.
   bool get running => _running;
@@ -83,17 +85,24 @@ class AutomationController extends ChangeNotifier {
         workflow = await context.pluginManager.getWorkflow(plugin);
         context.loggerService.log(LogLevel.info, 'Plugin Loading complete: ${plugin.name}');
       }
+      for (final timer in _screenshotTimers.values) {
+        timer.cancel();
+      }
+      _screenshotTimers.clear();
+      screenshotRepository.clear();
       _sessions = devices.map((device) {
         final session = context.sessionManager.createSession(device).copyWith(
           plugin: plugin,
           workflow: workflow,
           workflowRuntime: WorkflowRuntime(context: context),
-          currentStep: 'Detected',
+          startedAt: DateTime.now(),
+          currentStep: 'Device Monitor',
         );
         context.sessionManager.updateSession(session);
         return session;
       }).toList(growable: false);
       context.loggerService.log(LogLevel.info, 'Session Creation complete: ${_sessions.length} ADB device(s) detected');
+      _startScreenshotLoops(captureImmediately: true);
     } finally {
       _detecting = false;
       notifyListeners();
@@ -134,9 +143,9 @@ class AutomationController extends ChangeNotifier {
     switch (result) {
       case Success(:final value):
         _automationEngine.context.screenshotRepository.save(value);
-        await _automationEngine.context.perceptionService.analyze(session.device.id);
+        _automationEngine.context.loggerService.log(LogLevel.info, 'Screenshot Updated: ${session.device.name} (${session.device.id})');
       case Failure(:final error):
-        _automationEngine.context.loggerService.log(LogLevel.error, '[ADB] Capture Screenshot failed: ${error.message}');
+        _automationEngine.context.loggerService.log(LogLevel.error, 'Screenshot Failed: ${session.device.name} (${session.device.id}) ${error.message}');
     }
     notifyListeners();
   }
@@ -151,7 +160,7 @@ class AutomationController extends ChangeNotifier {
     await captureScreenshot(session);
   }
 
-  void _startScreenshotLoops() {
+  void _startScreenshotLoops({bool captureImmediately = false}) {
     for (final Timer timer in _screenshotTimers.values) {
       timer.cancel();
     }
@@ -159,9 +168,12 @@ class AutomationController extends ChangeNotifier {
     for (final AutomationSession session in _sessions) {
       if (!session.device.isOnline) continue;
       _screenshotTimers[session.device.id] = Timer.periodic(
-        const Duration(seconds: 1),
+        _desktopConfig.screenshotRefreshInterval,
         (_) => captureScreenshot(session),
       );
+      if (captureImmediately) {
+        unawaited(captureScreenshot(session));
+      }
     }
   }
 
@@ -183,8 +195,8 @@ class AutomationController extends ChangeNotifier {
   static AutomationEngine _createDefaultEngine() {
     final PluginManager pluginManager = PluginManager();
     final WorkflowEngine workflowEngine = WorkflowEngine();
-    final DeviceManager deviceManager = DeviceManager(const AdbDeviceService());
     final DesktopConsoleLogger loggerService = DesktopConsoleLogger();
+    final DeviceManager deviceManager = DeviceManager(AdbDeviceService(logger: loggerService));
     final LocalStorage storageService = LocalStorage();
     final SessionManager sessionManager = SessionManager();
     final ScreenshotRepository screenshotRepository = ScreenshotRepository();
