@@ -1,4 +1,5 @@
 import 'device.dart';
+import 'screen_size.dart';
 
 /// Defines the contract for device automation operations.
 abstract class DeviceService {
@@ -27,5 +28,5 @@ abstract class DeviceService {
   Future<String> screenshot();
 
   /// Returns the current screen width and height.
-  Future<(int width, int height)> getScreenSize();
+  Future<ScreenSize> getScreenSize();
 }
