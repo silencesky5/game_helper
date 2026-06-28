@@ -1,6 +1,9 @@
+import '../control/device_control_service.dart';
 import '../device/device_manager.dart';
 import '../logger/logger_service.dart';
 import '../plugin/plugin_manager.dart';
+import '../screenshot/screenshot_repository.dart';
+import '../screenshot/screenshot_service.dart';
 import '../storage/storage_service.dart';
 import '../workflow/workflow_engine.dart';
 import 'session_manager.dart';
@@ -25,6 +28,15 @@ class AutomationContext {
   /// Storage service available to automation sessions.
   final StorageService storageService;
 
+  /// Captures Android screenshots.
+  final ScreenshotService screenshotService;
+
+  /// Stores latest screenshots for desktop preview.
+  final ScreenshotRepository screenshotRepository;
+
+  /// Sends control commands to Android devices.
+  final DeviceControlService deviceControlService;
+
   /// Creates an immutable automation context from explicit dependencies.
   const AutomationContext({
     required this.pluginManager,
@@ -33,5 +45,8 @@ class AutomationContext {
     required this.loggerService,
     required this.sessionManager,
     required this.storageService,
+    required this.screenshotService,
+    required this.screenshotRepository,
+    required this.deviceControlService,
   });
 }
