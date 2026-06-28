@@ -8,7 +8,7 @@ sealed class PlanStep {
 
 /// Executes a device action through the command queue.
 class DevicePlanStep extends PlanStep {
-  const DevicePlanStep(this.action) : super(action.label);
+  DevicePlanStep(this.action) : super(action.label);
   final DeviceAction action;
 }
 
