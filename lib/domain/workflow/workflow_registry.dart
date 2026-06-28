@@ -5,6 +5,17 @@ class WorkflowRegistry {
   /// Creates an empty workflow registry.
   WorkflowRegistry() : _types = <String>{};
 
+  /// Registers the platform default workflow step type identifiers.
+  void registerDefaultSteps() {
+    register('tap');
+    register('swipe');
+    register('delay');
+    register('wait');
+    register('ocr');
+    register('if');
+    register('loop');
+  }
+
   /// Registers a workflow step [type].
   void register(String type) {
     _types.add(type);
