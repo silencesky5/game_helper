@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 
 import '../../domain/automation/automation_context.dart';
 import '../../domain/automation/automation_engine.dart';
+import '../../domain/automation/automation_session.dart';
+import '../../domain/automation/session_manager.dart';
 import '../../domain/device/device_manager.dart';
 import '../../domain/plugin/plugin_manager.dart';
 import '../../domain/workflow/workflow_engine.dart';
@@ -17,16 +19,22 @@ class AutomationController extends ChangeNotifier {
 
   final AutomationEngine _automationEngine;
   bool _running = false;
+  List<AutomationSession> _sessions = const <AutomationSession>[];
 
   /// Whether an automation run has been started from the dashboard.
   bool get running => _running;
+
+  /// Sessions shown by the desktop console.
+  List<AutomationSession> get sessions => _sessions;
 
   /// Starts the Mine Journey automation pipeline.
   Future<void> start() async {
     _running = true;
     notifyListeners();
 
-    await _automationEngine.start('mine_journey');
+    _sessions = await _automationEngine.start('mine_journey');
+    _running = false;
+    notifyListeners();
   }
 
   static AutomationEngine _createDefaultEngine() {
@@ -35,6 +43,7 @@ class AutomationController extends ChangeNotifier {
     final DeviceManager deviceManager = DeviceManager(const AdbDeviceService());
     final ConsoleLogger loggerService = ConsoleLogger();
     final LocalStorage storageService = LocalStorage();
+    final SessionManager sessionManager = SessionManager();
 
     return AutomationEngine(
       context: AutomationContext(
@@ -42,6 +51,7 @@ class AutomationController extends ChangeNotifier {
         workflowEngine: workflowEngine,
         deviceManager: deviceManager,
         loggerService: loggerService,
+        sessionManager: sessionManager,
         storageService: storageService,
       ),
     );

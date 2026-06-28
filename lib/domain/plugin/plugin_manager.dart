@@ -1,5 +1,7 @@
-import '../workflow/steps/tap_step.dart';
+import '../workflow/steps/delay_step.dart';
+import '../workflow/steps/log_step.dart';
 import '../workflow/workflow.dart';
+import '../workflow/workflow_step.dart';
 import 'plugin.dart';
 import 'plugin_repository.dart';
 
@@ -15,6 +17,9 @@ class PluginManager {
   /// Loads plugin metadata into memory.
   Future<void> initialize() async {
     _plugins = List<Plugin>.unmodifiable(await _repository.loadPlugins());
+    for (final Plugin plugin in _plugins) {
+      await plugin.implementation?.onLoad();
+    }
   }
 
   /// Installed plugins loaded by [initialize].
@@ -32,8 +37,41 @@ class PluginManager {
   }
 
   /// Loads the workflow for [plugin].
-  Future<Workflow> getWorkflow(Plugin plugin) {
-    return _repository.loadWorkflow(plugin);
+  Future<Workflow> getWorkflow(Plugin plugin) async {
+    return plugin.implementation?.createWorkflow() ?? _repository.loadWorkflow(plugin);
+  }
+}
+
+/// Empty Mine Journey starter plugin used to validate the plugin boundary.
+class MineJourneyPlugin implements GamePlugin {
+  /// Creates the Mine Journey starter plugin.
+  const MineJourneyPlugin();
+
+  @override
+  String get id => 'mine_journey';
+
+  @override
+  String get name => 'Mine Journey';
+
+  @override
+  Future<void> onLoad() async {}
+
+  @override
+  Future<void> onUnload() async {}
+
+  @override
+  Workflow createWorkflow() {
+    return const Workflow(
+      id: 'mine_journey_dummy_workflow',
+      name: 'Mine Journey Dummy Workflow',
+      description: 'Dummy Sprint 1 workflow with only log and delay steps.',
+      version: '1.0',
+      steps: <WorkflowStep>[
+        LogStep(id: 'log_start', message: 'Dummy workflow started'),
+        DelayStep(id: 'delay_demo', milliseconds: 250),
+        LogStep(id: 'log_finish', message: 'Dummy workflow finished'),
+      ],
+    );
   }
 }
 
@@ -50,9 +88,10 @@ class MockPluginRepository implements PluginRepository {
         name: 'Mine Journey',
         version: '1.0',
         author: 'Game Helper Team',
-        description: 'Starter plugin metadata for the first execution pipeline.',
+        description: 'Empty starter plugin for the first execution pipeline.',
         icon: 'extension',
         enabled: true,
+        implementation: MineJourneyPlugin(),
       ),
     ];
   }
@@ -60,12 +99,14 @@ class MockPluginRepository implements PluginRepository {
   @override
   Future<Workflow> loadWorkflow(Plugin plugin) async {
     return const Workflow(
-      id: 'mine_journey_mock_workflow',
-      name: 'Mine Journey Mock Workflow',
-      description: 'Mock workflow that sends one tap through the execution pipeline.',
+      id: 'mine_journey_dummy_workflow',
+      name: 'Mine Journey Dummy Workflow',
+      description: 'Dummy Sprint 1 workflow with only log and delay steps.',
       version: '1.0',
-      steps: <TapStep>[
-        TapStep(id: 'tap_300_500', x: 300, y: 500),
+      steps: <WorkflowStep>[
+        LogStep(id: 'log_start', message: 'Dummy workflow started'),
+        DelayStep(id: 'delay_demo', milliseconds: 250),
+        LogStep(id: 'log_finish', message: 'Dummy workflow finished'),
       ],
     );
   }
