@@ -55,6 +55,9 @@ class AutomationController extends ChangeNotifier {
   /// Sessions shown by the desktop console.
   List<AutomationSession> get sessions => _sessions;
 
+  /// Plugins available for assignment in each device card.
+  List<Plugin> get availablePlugins => _automationEngine.context.pluginManager.plugins;
+
   ScreenshotRepository get screenshotRepository => _automationEngine.context.screenshotRepository;
 
   ADBManager get adbManager => _automationEngine.context.deviceManager.deviceService is AdbDeviceService
@@ -97,7 +100,8 @@ class AutomationController extends ChangeNotifier {
       }
       _screenshotTimers.clear();
       screenshotRepository.clear();
-      _sessions = devices.map((device) {
+      _sessions = devices.asMap().entries.map((entry) {
+        final device = entry.value.copyWith(name: entry.value.name.trim().isEmpty ? _defaultDeviceName(entry.key) : entry.value.name);
         final session = context.sessionManager.createSession(device).copyWith(
           plugin: plugin,
           workflow: workflow,
@@ -181,6 +185,53 @@ class AutomationController extends ChangeNotifier {
     _automationEngine.context.loggerService.log(LogLevel.info, 'Session Start ${session.id}');
     await captureScreenshot(session);
   }
+
+  /// Updates the friendly dashboard name for a connected device session.
+  void renameSessionDevice(AutomationSession session, String name) {
+    final String fallbackName = _defaultDeviceName(_sessions.indexWhere((AutomationSession item) => item.id == session.id));
+    final String displayName = name.trim().isEmpty ? fallbackName : name.trim();
+    _replaceSession(
+      session.id,
+      session.copyWith(device: session.device.copyWith(name: displayName)),
+    );
+    _automationEngine.context.loggerService.log(LogLevel.info, 'Device Name updated: ${session.device.id} → $displayName');
+  }
+
+  /// Assigns a game plugin independently for one device session.
+  Future<void> assignPlugin(AutomationSession session, String pluginId) async {
+    final Plugin? plugin = _automationEngine.context.pluginManager.getPlugin(pluginId);
+    Workflow? workflow;
+    String currentStep = 'Plugin Unassigned';
+    if (plugin != null && plugin.implementation != null) {
+      workflow = await _automationEngine.context.pluginManager.getWorkflow(plugin);
+      currentStep = 'Device Monitor';
+    }
+
+    final updated = AutomationSession(
+      id: session.id,
+      device: session.device,
+      plugin: plugin,
+      workflow: workflow,
+      workflowRuntime: WorkflowRuntime(context: _automationEngine.context),
+      state: session.state,
+      logger: session.logger,
+      startedAt: session.startedAt,
+      currentStep: currentStep,
+    );
+    _replaceSession(session.id, updated);
+    _automationEngine.context.sessionManager.updateSession(updated);
+    _automationEngine.context.loggerService.log(LogLevel.info, 'Plugin assigned: ${session.device.name} → ${plugin?.name ?? '未指定'}');
+  }
+
+  void _replaceSession(String sessionId, AutomationSession updated) {
+    _sessions = _sessions
+        .map((AutomationSession session) => session.id == sessionId ? updated : session)
+        .toList(growable: false);
+    _automationEngine.context.sessionManager.updateSession(updated);
+    notifyListeners();
+  }
+
+  String _defaultDeviceName(int index) => 'Device #${index < 0 ? 1 : index + 1}';
 
   void _startScreenshotLoops({bool captureImmediately = false}) {
     for (final Timer timer in _screenshotTimers.values) {
