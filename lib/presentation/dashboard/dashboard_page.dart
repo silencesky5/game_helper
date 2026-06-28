@@ -359,6 +359,8 @@ class _DeviceCard extends StatelessWidget {
                         const SizedBox(height: 8),
                         Text('Plugin  $pluginRuntime'),
                         Text('Version  ${session.plugin?.version ?? 'N/A'}'),
+                        Text('角色  ${session.character.displayName}${session.character.level == null ? '' : ' / ${session.character.level}'}'),
+                        Text('Task Profile  ${session.taskProfile?.name ?? '未指定'}'),
                         const SizedBox(height: 8),
                         const TabBar(
                           tabs: <Widget>[
@@ -384,6 +386,8 @@ class _DeviceCard extends StatelessWidget {
                 runSpacing: 8,
                 children: <Widget>[
                   OutlinedButton(onPressed: () => controller.captureScreenshot(session), child: Text(context.l10n.screenshot)),
+                  OutlinedButton(onPressed: () => controller.detectCharacter(session), child: const Text('Detect Character')),
+                  OutlinedButton(onPressed: () => _showPluginSettings(context), child: const Text('⚙ Plugin Settings')),
                   OutlinedButton(onPressed: () => controller.tapTest(session), child: Text(context.l10n.tapTest)),
                   OutlinedButton(onPressed: () => controller.swipeTest(session), child: Text(context.l10n.swipeTest)),
                   OutlinedButton(onPressed: () => controller.restartSession(session), child: Text(context.l10n.restartSession)),
@@ -416,6 +420,32 @@ class _DeviceCard extends StatelessWidget {
     textController.dispose();
     if (name != null) controller.renameSessionDevice(session, name);
   }
+
+  Future<void> _showPluginSettings(BuildContext context) async {
+    final plugin = session.plugin;
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: const Text('⚙ Plugin Settings'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text('Plugin Version  ${plugin?.version ?? 'N/A'}'),
+            Text('Plugin Author  ${plugin?.author ?? 'N/A'}'),
+            Text('Plugin Log  See Runtime Logs'),
+            const Text('Debug  Enabled from dashboard actions'),
+            const Text('Reload Plugin  Coming soon'),
+            const Text('OCR Test  Coming soon'),
+            const Text('Image Test  Coming soon'),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
 }
 
 class _GameStatusTab extends StatelessWidget {
@@ -430,10 +460,12 @@ class _GameStatusTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.only(top: 8),
       children: <Widget>[
+        _InfoRow(label: '角色', value: session.character.displayName),
+        _InfoRow(label: 'Task Profile', value: session.taskProfile?.name ?? '未指定'),
         _InfoRow(label: '目前任務', value: decision?.currentGoal ?? context.l10n.deviceMonitor),
         _InfoRow(label: '下一步', value: decision?.currentAction ?? context.l10n.waiting),
         _InfoRow(label: '執行時間', value: runtime),
-        _InfoRow(label: '目前狀態', value: session.state == AutomationState.idle ? context.l10n.idle : session.state.name),
+        _StatusRow(state: session.state),
         _InfoRow(label: '錯誤', value: context.l10n.none),
         const Divider(height: 16),
         const Text('今日收益'),
@@ -470,11 +502,32 @@ class _DeviceInfoTab extends StatelessWidget {
   }
 }
 
+
+class _StatusRow extends StatelessWidget {
+  const _StatusRow({required this.state});
+
+  final AutomationState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final (String label, Color color) = switch (state) {
+      AutomationState.running => ('🟢 Running', Colors.green),
+      AutomationState.paused => ('🟡 Waiting', Colors.amber),
+      AutomationState.completed => ('🔵 Working', Colors.blue),
+      AutomationState.failed => ('🔴 Error', Colors.red),
+      AutomationState.stopped => ('⚫ Offline', Colors.grey),
+      AutomationState.idle => ('🟡 Waiting', Colors.amber),
+    };
+    return _InfoRow(label: '目前狀態', value: label, valueColor: color);
+  }
+}
+
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
+  const _InfoRow({required this.label, required this.value, this.valueColor});
 
   final String label;
   final String value;
+  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) {
@@ -483,7 +536,7 @@ class _InfoRow extends StatelessWidget {
       child: Row(
         children: <Widget>[
           SizedBox(width: 120, child: Text(label, style: Theme.of(context).textTheme.bodySmall)),
-          Expanded(child: Text(value)),
+          Expanded(child: Text(value, style: valueColor == null ? null : TextStyle(color: valueColor, fontWeight: FontWeight.w600))),
         ],
       ),
     );
@@ -508,7 +561,15 @@ class _ScreenshotPreview extends StatelessWidget {
       ),
       child: screenshot == null
           ? Center(child: Text(context.l10n.noScreenshot))
-          : Image.memory(screenshot!.pngBytes, fit: BoxFit.cover, gaplessPlayback: true),
+          : InkWell(
+              onTap: () => showDialog<void>(
+                context: context,
+                builder: (BuildContext dialogContext) => Dialog(
+                  child: InteractiveViewer(child: Image.memory(screenshot!.pngBytes, fit: BoxFit.contain)),
+                ),
+              ),
+              child: Image.memory(screenshot!.pngBytes, fit: BoxFit.cover, gaplessPlayback: true),
+            ),
     );
   }
 }

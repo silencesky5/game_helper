@@ -6,6 +6,7 @@ import '../workflow/steps/delay_step.dart';
 import '../workflow/steps/log_step.dart';
 import '../workflow/workflow.dart';
 import '../workflow/workflow_step.dart';
+import 'game_profile.dart';
 import 'plugin.dart';
 import 'plugin_repository.dart';
 
@@ -109,6 +110,27 @@ class MineJourneyPlugin implements GamePlugin {
 
   @override
   Future<void> onUnload() async {}
+
+  @override
+  Future<CharacterProfile> detectCharacter() async {
+    return const CharacterProfile(name: '小礦工', level: 'Lv58');
+  }
+
+  @override
+  List<TaskProfile> createTaskProfiles() => <TaskProfile>[
+        TaskProfile(
+          id: 'daily',
+          name: '每日任務',
+          description: '登入、簽到、採礦、整理背包、離線。',
+          workflow: createWorkflow(),
+        ),
+        TaskProfile(
+          id: 'mining',
+          name: '採礦',
+          description: '登入、採礦、販售、採礦。',
+          workflow: createWorkflow(),
+        ),
+      ];
 
   @override
   List<Goal> createGoals() => const <Goal>[LaunchGameGoal(), WaitMainMenuGoal()];

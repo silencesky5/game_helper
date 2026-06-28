@@ -22,6 +22,7 @@ import '../../infrastructure/adb/adb_device_control_service.dart';
 import '../../infrastructure/adb/adb_manager.dart';
 import '../../infrastructure/adb/adb_device_service.dart';
 import '../../infrastructure/adb/adb_screenshot_service.dart';
+import '../../domain/plugin/game_profile.dart';
 import '../../domain/plugin/plugin.dart';
 import '../../domain/workflow/workflow.dart';
 import '../../domain/workflow/workflow_runtime.dart';
@@ -105,6 +106,8 @@ class AutomationController extends ChangeNotifier {
         final session = context.sessionManager.createSession(device).copyWith(
           plugin: plugin,
           workflow: workflow,
+          taskProfile: _firstTaskProfile(plugin),
+          character: const CharacterProfile.notLoggedIn(),
           workflowRuntime: WorkflowRuntime(context: context),
           startedAt: DateTime.now(),
           currentStep: 'Device Monitor',
@@ -180,6 +183,14 @@ class AutomationController extends ChangeNotifier {
     notifyListeners();
   }
 
+
+  /// Asks the assigned plugin to detect the active character for one session.
+  Future<void> detectCharacter(AutomationSession session) async {
+    final character = await session.plugin?.implementation?.detectCharacter() ?? const CharacterProfile.notLoggedIn();
+    _replaceSession(session.id, session.copyWith(character: character));
+    _automationEngine.context.loggerService.log(LogLevel.info, 'Character detected: ${session.device.name} → ${character.displayName}');
+  }
+
   Future<void> restartSession(AutomationSession session) async {
     _automationEngine.context.loggerService.log(LogLevel.info, 'Session Stop ${session.id}');
     _automationEngine.context.loggerService.log(LogLevel.info, 'Session Start ${session.id}');
@@ -217,6 +228,8 @@ class AutomationController extends ChangeNotifier {
       logger: session.logger,
       startedAt: session.startedAt,
       currentStep: currentStep,
+      taskProfile: _firstTaskProfile(plugin),
+      character: const CharacterProfile.notLoggedIn(),
     );
     _replaceSession(session.id, updated);
     _automationEngine.context.sessionManager.updateSession(updated);
@@ -229,6 +242,11 @@ class AutomationController extends ChangeNotifier {
         .toList(growable: false);
     _automationEngine.context.sessionManager.updateSession(updated);
     notifyListeners();
+  }
+
+  TaskProfile? _firstTaskProfile(Plugin? plugin) {
+    final profiles = plugin?.implementation?.createTaskProfiles() ?? const <TaskProfile>[];
+    return profiles.isEmpty ? null : profiles.first;
   }
 
   String _defaultDeviceName(int index) => 'Device #${index < 0 ? 1 : index + 1}';

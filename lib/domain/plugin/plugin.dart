@@ -1,5 +1,6 @@
 import '../decision/goal.dart';
 import '../workflow/workflow.dart';
+import 'game_profile.dart';
 
 /// Interface implemented by game plugins loaded by the platform.
 abstract class GamePlugin {
@@ -17,6 +18,12 @@ abstract class GamePlugin {
 
   /// Creates the plugin workflow for the current session.
   Workflow createWorkflow();
+
+  /// Detects the active character. Plugins own all game-specific parsing.
+  Future<CharacterProfile> detectCharacter();
+
+  /// Task profiles available for this plugin.
+  List<TaskProfile> createTaskProfiles();
 
   /// Creates perception-driven goals for the current session.
   List<Goal> createGoals();
