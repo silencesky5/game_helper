@@ -1,0 +1,194 @@
+{
+  "@@locale": "ja",
+  "appTitle": "Game Helper",
+  "desktopConsoleTitle": "Game Helper Desktop Console",
+  "runningPipeline": "Running pipeline...",
+  "ready": "Ready",
+  "dashboard": "Dashboard",
+  "plugins": "Plugins",
+  "settings": "Settings",
+  "language": "Language",
+  "traditionalChinese": "繁體中文",
+  "english": "English",
+  "deviceSessions": "Device Sessions",
+  "detecting": "Detecting...",
+  "detectDevices": "Detect Devices",
+  "adbSettings": "ADB Settings",
+  "adbPath": "ADB Path: {path}",
+  "@adbPath": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "notDiscovered": "Not discovered",
+  "adbVersion": "ADB Version: {version}",
+  "@adbVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "unknown": "Unknown",
+  "connectionStatus": "Connection Status: {status}",
+  "@connectionStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "browse": "Browse...",
+  "testConnection": "Test Connection",
+  "rescan": "Rescan",
+  "adbPathTitle": "ADB Path",
+  "adbExePath": "adb.exe path",
+  "cancel": "Cancel",
+  "save": "Save",
+  "detectingDevicesMessage": "Detecting LDPlayer instances through ADB...",
+  "noAdbDevicesDetected": "No ADB devices detected",
+  "startLdPlayerHint": "Start LDPlayer and ensure adb devices lists each emulator before launching automation.",
+  "runtimeLogs": "Runtime Logs",
+  "waitingForEvents": "Waiting for desktop console events...",
+  "deviceStatus": "Device Status: {status}",
+  "@deviceStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "androidVersion": "Android Version: {version}",
+  "@androidVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "resolution": "Resolution: {resolution}",
+  "@resolution": {
+    "placeholders": {
+      "resolution": {
+        "type": "String"
+      }
+    }
+  },
+  "manufacturer": "Manufacturer: {manufacturer}",
+  "@manufacturer": {
+    "placeholders": {
+      "manufacturer": {
+        "type": "String"
+      }
+    }
+  },
+  "model": "Model: {model}",
+  "@model": {
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "currentPlugin": "Current Plugin: {plugin}",
+  "@currentPlugin": {
+    "placeholders": {
+      "plugin": {
+        "type": "String"
+      }
+    }
+  },
+  "currentGoal": "Current Goal: {goal}",
+  "@currentGoal": {
+    "placeholders": {
+      "goal": {
+        "type": "String"
+      }
+    }
+  },
+  "runtime": "Runtime: {runtime}",
+  "@runtime": {
+    "placeholders": {
+      "runtime": {
+        "type": "String"
+      }
+    }
+  },
+  "currentState": "Current State: {state}",
+  "@currentState": {
+    "placeholders": {
+      "state": {
+        "type": "String"
+      }
+    }
+  },
+  "currentStep": "Current Step: {step}",
+  "@currentStep": {
+    "placeholders": {
+      "step": {
+        "type": "String"
+      }
+    }
+  },
+  "screenshotStatus": "Screenshot Status: {status}",
+  "@screenshotStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "waitingForLiveFrame": "waiting for live frame",
+  "live": "live",
+  "lastUpdate": "Last Update: {time}",
+  "@lastUpdate": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "never": "Never",
+  "deviceMonitor": "Device Monitor",
+  "currentDecision": "Current Decision: {decision}",
+  "@currentDecision": {
+    "placeholders": {
+      "decision": {
+        "type": "String"
+      }
+    }
+  },
+  "waiting": "Waiting",
+  "currentAction": "Current Action: {action}",
+  "@currentAction": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
+  "none": "None",
+  "screenshot": "Screenshot",
+  "tapTest": "Tap Test",
+  "swipeTest": "Swipe Test",
+  "restartSession": "Restart Session",
+  "noScreenshot": "No Screenshot",
+  "startAutomation": "Start Automation",
+  "installedPlugins": "Installed Plugins",
+  "noPluginsInstalled": "No plugins installed",
+  "version": "Version {version}",
+  "@version": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "enabled": "Enabled",
+  "disabled": "Disabled",
+  "desktopRequiredTitle": "Game Helper Desktop Required",
+  "desktopRequiredMessage": "Game Helper Desktop Console runs on Windows only. Android emulators are controlled through ADB and must not host the dashboard.",
+  "idle": "idle"
+}

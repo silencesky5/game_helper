@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import '../../domain/automation/automation_session.dart';
 import '../../domain/automation/automation_state.dart';
 import '../../domain/decision/decision_state.dart';
+import '../../domain/plugin/game_profile.dart';
 import '../../domain/screenshot/device_screenshot.dart';
 import '../../app/localization/l10n_extension.dart';
 import '../../app/localization/language_manager.dart';
 import 'automation_controller.dart';
+import '../plugins/plugins_page.dart';
+import '../settings/settings_page.dart';
 import 'widgets/start_button.dart';
 
 /// Dashboard entry point for the desktop automation console.
@@ -17,7 +20,7 @@ class DashboardPage extends StatefulWidget {
   /// Controller used to start automation.
   final AutomationController? controller;
 
-  /// Manages runtime locale changes.
+  /// Manages runtime locale changes from the Settings page.
   final LanguageManager? languageManager;
 
   @override
@@ -59,9 +62,12 @@ class _DashboardPageState extends State<DashboardPage> {
         children: <Widget>[
           NavigationRail(
             selectedIndex: 0,
+            onDestinationSelected: (int index) => _openNavigationDestination(context, index),
             destinations: <NavigationRailDestination>[
               NavigationRailDestination(icon: Icon(Icons.dashboard), label: Text(context.l10n.dashboard)),
               NavigationRailDestination(icon: Icon(Icons.extension), label: Text(context.l10n.plugins)),
+              const NavigationRailDestination(icon: Icon(Icons.bar_chart), label: Text('Statistics')),
+              const NavigationRailDestination(icon: Icon(Icons.article), label: Text('Logs')),
               NavigationRailDestination(icon: Icon(Icons.settings), label: Text(context.l10n.settings)),
             ],
           ),
@@ -72,12 +78,6 @@ class _DashboardPageState extends State<DashboardPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  _ADBSettingsCard(controller: _controller),
-                  const SizedBox(height: 16),
-                  if (widget.languageManager != null) ...<Widget>[
-                    _SettingsCard(languageManager: widget.languageManager!),
-                    const SizedBox(height: 16),
-                  ],
                   Row(
                     children: <Widget>[
                       Text(context.l10n.deviceSessions, style: Theme.of(context).textTheme.headlineMedium),
@@ -120,122 +120,12 @@ class _DashboardPageState extends State<DashboardPage> {
   void _onControllerChanged() {
     if (mounted) setState(() {});
   }
-}
 
-
-
-class _SettingsCard extends StatelessWidget {
-  const _SettingsCard({required this.languageManager});
-
-  final LanguageManager languageManager;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: <Widget>[
-            Text(context.l10n.settings, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(width: 24),
-            Text(context.l10n.language),
-            const SizedBox(width: 12),
-            DropdownButton<AppLanguage>(
-              value: languageManager.currentLanguage,
-              onChanged: (AppLanguage? language) {
-                if (language != null) languageManager.changeLanguage(language);
-              },
-              items: <DropdownMenuItem<AppLanguage>>[
-                DropdownMenuItem<AppLanguage>(
-                  value: AppLanguage.zhTw,
-                  child: Text(context.l10n.traditionalChinese),
-                ),
-                DropdownMenuItem<AppLanguage>(
-                  value: AppLanguage.zh,
-                  child: Text(context.l10n.traditionalChinese),
-                ),
-                DropdownMenuItem<AppLanguage>(
-                  value: AppLanguage.en,
-                  child: Text(context.l10n.english),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ADBSettingsCard extends StatelessWidget {
-  const _ADBSettingsCard({required this.controller});
-
-  final AutomationController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final adbManager = controller.adbManager;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(context.l10n.adbSettings, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(context.l10n.adbPath(adbManager.adbPath ?? context.l10n.notDiscovered)),
-            Text(context.l10n.adbVersion(adbManager.adbVersion ?? context.l10n.unknown)),
-            Text(context.l10n.connectionStatus(adbManager.connectionStatus)),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              children: <Widget>[
-                OutlinedButton.icon(
-                  onPressed: () => _showADBPathDialog(context),
-                  icon: const Icon(Icons.folder_open),
-                  label: Text(context.l10n.browse),
-                ),
-                OutlinedButton.icon(
-                  onPressed: controller.testADBConnection,
-                  icon: const Icon(Icons.cable),
-                  label: Text(context.l10n.testConnection),
-                ),
-                OutlinedButton.icon(
-                  onPressed: controller.rescanADB,
-                  icon: const Icon(Icons.search),
-                  label: Text(context.l10n.rescan),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _showADBPathDialog(BuildContext context) async {
-    final textController = TextEditingController(text: controller.adbManager.adbPath ?? '');
-    final path = await showDialog<String>(
-      context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        title: Text(context.l10n.adbPathTitle),
-        content: TextField(
-          controller: textController,
-          autofocus: true,
-          decoration: InputDecoration(
-            labelText: context.l10n.adbExePath,
-            hintText: r'C:\LDPlayer\LDPlayer9\adb.exe',
-          ),
-        ),
-        actions: <Widget>[
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(context.l10n.cancel)),
-          FilledButton(onPressed: () => Navigator.of(dialogContext).pop(textController.text), child: Text(context.l10n.save)),
-        ],
-      ),
-    );
-    textController.dispose();
-    if (path != null && path.trim().isNotEmpty) {
-      await controller.setADBPath(path);
+  void _openNavigationDestination(BuildContext context, int index) {
+    if (index == 1) {
+      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const PluginsPage()));
+    } else if (index == 4) {
+      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => SettingsPage(controller: _controller, languageManager: widget.languageManager)));
     }
   }
 }
@@ -312,7 +202,7 @@ class _DeviceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final DeviceScreenshot? screenshot = controller.screenshotRepository.latest(session.device.id);
     final DecisionStatus? decision = controller.decisionRepository.statusFor(session.device.id);
-    final String pluginName = session.plugin?.name ?? '未指定';
+    final String pluginName = session.plugin?.displayName ?? '未指定';
     final String pluginRuntime = session.plugin?.implementation?.runtimeType.toString() ?? pluginName;
 
     return Card(
@@ -350,17 +240,26 @@ class _DeviceCard extends StatelessWidget {
                           value: session.plugin?.id ?? 'unassigned',
                           decoration: const InputDecoration(labelText: '遊戲', isDense: true),
                           items: controller.availablePlugins
-                              .map((plugin) => DropdownMenuItem<String>(value: plugin.id, child: Text(plugin.name)))
+                              .map((plugin) => DropdownMenuItem<String>(value: plugin.id, child: Text(plugin.displayName)))
                               .toList(growable: false),
                           onChanged: (String? pluginId) {
                             if (pluginId != null) controller.assignPlugin(session, pluginId);
                           },
                         ),
                         const SizedBox(height: 8),
-                        Text('Plugin  $pluginRuntime'),
+                        Text('Plugin Internal Name  $pluginRuntime'),
                         Text('Version  ${session.plugin?.version ?? 'N/A'}'),
                         Text('角色  ${session.character.displayName}${session.character.level == null ? '' : ' / ${session.character.level}'}'),
-                        Text('Task Profile  ${session.taskProfile?.name ?? '未指定'}'),
+                        DropdownButtonFormField<String>(
+                          value: session.taskProfile?.id,
+                          decoration: const InputDecoration(labelText: 'Task Profile', isDense: true),
+                          items: (session.plugin?.implementation?.createTaskProfiles() ?? const <TaskProfile>[])
+                              .map((profile) => DropdownMenuItem<String>(value: profile.id, child: Text(profile.name)))
+                              .toList(growable: false),
+                          onChanged: (String? profileId) {
+                            if (profileId != null) controller.assignTaskProfile(session, profileId);
+                          },
+                        ),
                         const SizedBox(height: 8),
                         const TabBar(
                           tabs: <Widget>[
@@ -494,7 +393,7 @@ class _DeviceInfoTab extends StatelessWidget {
         _InfoRow(label: 'Model', value: session.device.model),
         _InfoRow(label: 'Serial', value: session.device.id),
         _InfoRow(label: 'ADB', value: session.device.status.name),
-        _InfoRow(label: 'Plugin', value: session.plugin?.name ?? '未指定'),
+        _InfoRow(label: 'Plugin', value: session.plugin?.displayName ?? '未指定'),
         const _InfoRow(label: 'Screenshot FPS', value: 'Live refresh'),
         _InfoRow(label: 'Last Update', value: screenshot?.updatedAt.toLocal().toString().split('.').first ?? context.l10n.never),
       ],
