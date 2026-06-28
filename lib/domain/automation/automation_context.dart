@@ -5,6 +5,8 @@ import '../plugin/plugin_manager.dart';
 import '../screenshot/screenshot_repository.dart';
 import '../screenshot/screenshot_service.dart';
 import '../storage/storage_service.dart';
+import '../vision/vision_repository.dart';
+import '../vision/vision_service.dart';
 import '../workflow/workflow_engine.dart';
 import 'session_manager.dart';
 
@@ -37,6 +39,12 @@ class AutomationContext {
   /// Sends control commands to Android devices.
   final DeviceControlService deviceControlService;
 
+  /// Shared screenshot analysis service.
+  final VisionService visionService;
+
+  /// Stores latest vision analysis for the desktop console and workflows.
+  final VisionRepository visionRepository;
+
   /// Creates an immutable automation context from explicit dependencies.
   const AutomationContext({
     required this.pluginManager,
@@ -48,5 +56,7 @@ class AutomationContext {
     required this.screenshotService,
     required this.screenshotRepository,
     required this.deviceControlService,
+    required this.visionService,
+    required this.visionRepository,
   });
 }

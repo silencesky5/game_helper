@@ -4,6 +4,7 @@ import '../../domain/automation/automation_session.dart';
 import '../../domain/automation/automation_state.dart';
 import '../../domain/device/device.dart';
 import '../../domain/screenshot/device_screenshot.dart';
+import '../../domain/vision/vision_types.dart';
 import 'automation_controller.dart';
 import 'widgets/start_button.dart';
 
@@ -117,6 +118,7 @@ class _DeviceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final DeviceScreenshot? screenshot = controller.screenshotRepository.latest(session.device.id);
+    final VisionResult? vision = controller.visionRepository.lastAnalysis(session.device.id);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -139,6 +141,12 @@ class _DeviceCard extends StatelessWidget {
                   Text('Session State: ${session.state == AutomationState.idle ? 'idle' : session.state.name}'),
                   Text('Screenshot Status: ${screenshot == null ? 'placeholder' : 'live'}'),
                   Text('Last Update: ${screenshot?.updatedAt.toLocal().toString().split('.').first ?? 'Never'}'),
+                  const Divider(height: 16),
+                  Text('Vision Panel', style: Theme.of(context).textTheme.titleSmall),
+                  Text('Current State: ${vision?.currentState.name ?? 'unknown'}'),
+                  Text('Last Vision Time: ${vision?.timestamp.toLocal().toString().split('.').first ?? 'Never'}'),
+                  Text('Match Count: ${vision?.matchCount ?? 0}'),
+                  Text('Detection Status: ${vision?.detectionStatus ?? 'waiting'}'),
                   const Spacer(),
                   Wrap(
                     spacing: 8,

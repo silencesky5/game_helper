@@ -19,6 +19,9 @@ import '../../infrastructure/adb/adb_screenshot_service.dart';
 import '../../infrastructure/logger/console_logger.dart';
 import '../../infrastructure/storage/local_storage.dart';
 import '../../domain/screenshot/screenshot_repository.dart';
+import '../../domain/vision/vision_config.dart';
+import '../../domain/vision/vision_repository.dart';
+import '../../domain/vision/vision_service.dart';
 
 /// Presentation controller for starting the automation pipeline.
 class AutomationController extends ChangeNotifier {
@@ -38,6 +41,8 @@ class AutomationController extends ChangeNotifier {
   List<AutomationSession> get sessions => _sessions;
 
   ScreenshotRepository get screenshotRepository => _automationEngine.context.screenshotRepository;
+
+  VisionRepository get visionRepository => _automationEngine.context.visionRepository;
 
   /// Starts the Mine Journey automation pipeline.
   Future<void> start() async {
@@ -60,10 +65,13 @@ class AutomationController extends ChangeNotifier {
 
   Future<void> captureScreenshot(AutomationSession session) async {
     final result = await _automationEngine.context.screenshotService.capture(session.device);
-    result.fold(
-      (screenshot) => _automationEngine.context.screenshotRepository.save(screenshot),
-      (error) => _automationEngine.context.loggerService.log(LogLevel.error, '[ADB] Capture Screenshot failed: ${error.message}'),
-    );
+    switch (result) {
+      case Success(:final value):
+        _automationEngine.context.screenshotRepository.save(value);
+        await _automationEngine.context.visionService.analyze(session.device.id);
+      case Failure(:final error):
+        _automationEngine.context.loggerService.log(LogLevel.error, '[ADB] Capture Screenshot failed: ${error.message}');
+    }
     notifyListeners();
   }
 
@@ -114,6 +122,7 @@ class AutomationController extends ChangeNotifier {
     final LocalStorage storageService = LocalStorage();
     final SessionManager sessionManager = SessionManager();
     final ScreenshotRepository screenshotRepository = ScreenshotRepository();
+    final VisionRepository visionRepository = VisionRepository();
 
     return AutomationEngine(
       context: AutomationContext(
@@ -126,6 +135,13 @@ class AutomationController extends ChangeNotifier {
         screenshotService: AdbScreenshotService(logger: loggerService),
         screenshotRepository: screenshotRepository,
         deviceControlService: AdbDeviceControlService(logger: loggerService),
+        visionService: VisionService(
+          screenshotRepository: screenshotRepository,
+          visionRepository: visionRepository,
+          config: const VisionConfig(),
+          logger: loggerService,
+        ),
+        visionRepository: visionRepository,
       ),
     );
   }
