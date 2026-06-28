@@ -82,9 +82,7 @@ class AttendancePopupHandler {
         VisionTemplates.attendanceReceiveAll,
       );
       if (enabled) {
-        context.log(
-          'Attendance receive-all available; attempt $attempt/$maxReceiveRetries',
-        );
+        context.log('Receive All');
         await context.actionController.randomTap(context.emulator, receiveRect);
         await context.actionController.randomDelay(
           min: const Duration(milliseconds: 300),
@@ -93,6 +91,7 @@ class AttendancePopupHandler {
         continue;
       }
 
+      context.log('Close Attendance');
       await _close(context);
       return const TaskResult.success('Attendance already received and closed');
     }

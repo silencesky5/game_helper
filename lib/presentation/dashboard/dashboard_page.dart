@@ -4,7 +4,6 @@ import '../../domain/automation/automation_action.dart';
 import '../../domain/automation/automation_config.dart';
 import '../../domain/automation/automation_session.dart';
 import '../../domain/automation/automation_state.dart';
-import '../../domain/decision/decision_state.dart';
 import '../../domain/screenshot/device_screenshot.dart';
 import '../../app/localization/l10n_extension.dart';
 import '../../app/localization/language_manager.dart';
@@ -200,7 +199,6 @@ class _DeviceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final DeviceScreenshot? screenshot = controller.screenshotRepository.latest(session.device.id);
-    final DecisionStatus? decision = controller.decisionRepository.statusFor(session.device.id);
     final String pluginName = session.plugin?.displayName ?? '未指定';
     final String pluginVersion = session.plugin?.version ?? 'N/A';
     final String characterLevel = session.character.level == null ? '' : ' / ${session.character.level}';
@@ -255,7 +253,7 @@ class _DeviceCard extends StatelessWidget {
                         },
                       ),
                       const SizedBox(height: 12),
-                      _RuntimeMonitor(session: session, decision: decision),
+                      _RuntimeMonitor(session: session),
                     ],
                   ),
                 ),
@@ -409,10 +407,9 @@ class _DeviceCard extends StatelessWidget {
 }
 
 class _RuntimeMonitor extends StatelessWidget {
-  const _RuntimeMonitor({required this.session, required this.decision});
+  const _RuntimeMonitor({required this.session});
 
   final AutomationSession session;
-  final DecisionStatus? decision;
 
   @override
   Widget build(BuildContext context) {
@@ -422,8 +419,9 @@ class _RuntimeMonitor extends StatelessWidget {
       children: <Widget>[
         Text('Runtime', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 4),
-        _InfoRow(label: '目前任務', value: decision?.currentGoal ?? context.l10n.deviceMonitor),
-        _InfoRow(label: '下一步', value: decision?.currentAction ?? context.l10n.waiting),
+        _InfoRow(label: '目前任務', value: session.currentStep),
+        _InfoRow(label: '下一步', value: session.nextStep),
+        _InfoRow(label: '目前 Scene', value: session.currentScene),
         _InfoRow(label: '執行時間', value: runtime),
         _StatusRow(state: session.state),
         _InfoRow(label: '錯誤', value: context.l10n.none),
@@ -451,6 +449,7 @@ class _ActionGroups extends StatelessWidget {
         _ButtonCluster(children: <Widget>[
           OutlinedButton(onPressed: () => controller.captureScreenshot(session), child: Text(context.l10n.screenshot)),
           OutlinedButton(onPressed: () => controller.detectSceneDebug(session), child: const Text('Detect Scene')),
+          OutlinedButton(onPressed: controller.running ? null : controller.start, child: const Text('開始自動化')),
           OutlinedButton(onPressed: () => controller.detectCharacter(session), child: const Text('Detect Character')),
           OutlinedButton(onPressed: onPluginSettings, child: const Text('⚙ Plugin Settings')),
           OutlinedButton(onPressed: onAutomationLogic, child: const Text('設定運行邏輯')),
@@ -492,7 +491,7 @@ class _StatusRow extends StatelessWidget {
     final (String label, Color color) = switch (state) {
       AutomationState.running => ('🟢 Running', Colors.green),
       AutomationState.paused => ('🟡 Waiting', Colors.amber),
-      AutomationState.completed => ('🔵 Working', Colors.blue),
+      AutomationState.completed => ('🔵 Success', Colors.blue),
       AutomationState.failed => ('🔴 Error', Colors.red),
       AutomationState.stopped => ('⚫ Offline', Colors.grey),
       AutomationState.idle => ('🟡 Waiting', Colors.amber),

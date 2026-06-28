@@ -23,6 +23,8 @@ class AutomationSession {
     this.logger,
     this.startedAt,
     this.currentStep = 'Idle',
+    this.nextStep = 'Waiting',
+    this.currentScene = 'Unknown',
   });
 
   /// Unique session identifier.
@@ -61,6 +63,12 @@ class AutomationSession {
   /// Current step name shown in the desktop console.
   final String currentStep;
 
+  /// Next launch/workflow step shown in the desktop console.
+  final String nextStep;
+
+  /// Last detected scene shown in the desktop console.
+  final String currentScene;
+
   /// Creates a new session with selected fields replaced.
   AutomationSession copyWith({
     String? id,
@@ -75,6 +83,8 @@ class AutomationSession {
     LoggerService? logger,
     DateTime? startedAt,
     String? currentStep,
+    String? nextStep,
+    String? currentScene,
   }) {
     return AutomationSession(
       id: id ?? this.id,
@@ -89,6 +99,8 @@ class AutomationSession {
       logger: logger ?? this.logger,
       startedAt: startedAt ?? this.startedAt,
       currentStep: currentStep ?? this.currentStep,
+      nextStep: nextStep ?? this.nextStep,
+      currentScene: currentScene ?? this.currentScene,
     );
   }
 }
