@@ -33,6 +33,7 @@ import '../../infrastructure/storage/local_storage.dart';
 import '../../domain/screenshot/screenshot_repository.dart';
 import '../../domain/vision/vision_config.dart';
 import '../../domain/vision/vision_repository.dart';
+import '../../automation/engine/image_detector.dart';
 import '../../domain/vision/vision_service.dart';
 import 'desktop_console_config.dart';
 
@@ -188,6 +189,15 @@ class AutomationController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Detects the current scene with template-level debug information.
+  Future<void> detectSceneDebug(AutomationSession session) async {
+    final report = await const ImageDetector().debugScene();
+    _automationEngine.context.loggerService.log(
+      LogLevel.info,
+      '[Detect Scene] ${session.device.name}\n$report',
+    );
+    notifyListeners();
+  }
 
   /// Asks the assigned plugin to detect the active character for one session.
   Future<void> detectCharacter(AutomationSession session) async {

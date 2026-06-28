@@ -5,10 +5,10 @@ import 'package:game_helper/automation/engine/action_controller.dart';
 import 'package:game_helper/automation/engine/image_detector.dart';
 import 'package:game_helper/automation/engine/popup_manager.dart';
 import 'package:game_helper/automation/engine/state_manager.dart';
-import 'package:game_helper/automation/models/game_state.dart';
 import 'package:game_helper/automation/models/task_context.dart';
 import 'package:game_helper/automation/models/task_result.dart';
 import 'package:game_helper/automation/tasks/login/login_task.dart';
+import 'package:game_helper/automation/navigation/navigation_service.dart';
 import 'package:game_helper/emulator/emulator.dart';
 
 void main() {
@@ -71,15 +71,22 @@ void main() {
     },
   );
 
-  test('launch task starts GrowStone and waits for home scene', () async {
+  test('launch task starts GrowStone through navigator and waits for home scene', () async {
     final detector = _FakeImageDetector(
       templates: <String>{VisionTemplates.androidGrowstoneIcon},
     );
     final stateManager = StateManager(imageDetector: detector);
     final actions = _FakeActionController(
-      onWaitSceneChange: () => stateManager.update(
-        const GameState(currentScene: 'home'),
-      ),
+      onTap: () {
+        detector.templates
+          ..remove(VisionTemplates.androidGrowstoneIcon)
+          ..addAll(<String>{
+            VisionTemplates.homeBag,
+            VisionTemplates.homeShop,
+            VisionTemplates.homeMail,
+            VisionTemplates.homeCraft,
+          });
+      },
     );
     final context = TaskContext(
       emulator: emulator,
@@ -91,7 +98,42 @@ void main() {
     final result = await const LoginTask().execute(context);
 
     expect(result.status, TaskResultStatus.success);
-    expect(actions.launchedPackage, LoginTask.growStonePackageName);
+    expect(actions.tapRects, <Rectangle<int>>[detector.growStoneIconRect]);
+  });
+
+  test('navigation waitHome handles attendance before succeeding at home', () async {
+    final detector = _FakeImageDetector(
+      templates: <String>{
+        VisionTemplates.attendanceTitle,
+        VisionTemplates.attendanceReceiveAll,
+        VisionTemplates.attendanceCloseButton,
+      },
+    );
+    final actions = _FakeActionController(
+      onTap: () {
+        detector.templates
+          ..remove(VisionTemplates.attendanceTitle)
+          ..remove(VisionTemplates.attendanceReceiveAll)
+          ..remove(VisionTemplates.attendanceCloseButton)
+          ..addAll(<String>{
+            VisionTemplates.homeBag,
+            VisionTemplates.homeShop,
+            VisionTemplates.homeMail,
+            VisionTemplates.homeCraft,
+          });
+      },
+    );
+    final context = TaskContext(
+      emulator: emulator,
+      stateManager: StateManager(imageDetector: detector),
+      actionController: actions,
+      log: (_) {},
+    );
+
+    final reachedHome = await const NavigationService().waitHome(context);
+
+    expect(reachedHome, isTrue);
+    expect(actions.tapRects, <Rectangle<int>>[detector.closeRect]);
   });
 }
 
@@ -101,8 +143,11 @@ class _FakeImageDetector extends ImageDetector {
 
   final Set<String> templates;
   final Set<String> brightTemplates;
-  final Rectangle<int> receiveAllRect = const Rectangle<int>(420, 332, 100, 33);
+  final Rectangle<int> receiveAllRect =
+      const Rectangle<int>(420, 332, 100, 33);
   final Rectangle<int> closeRect = const Rectangle<int>(590, 110, 30, 30);
+  final Rectangle<int> growStoneIconRect =
+      const Rectangle<int>(40, 80, 72, 72);
 
   @override
   Future<bool> findTemplate(String templateId) async =>
@@ -113,6 +158,7 @@ class _FakeImageDetector extends ImageDetector {
     return switch (templateId) {
       VisionTemplates.attendanceReceiveAll => receiveAllRect,
       VisionTemplates.attendanceCloseButton => closeRect,
+      VisionTemplates.androidGrowstoneIcon => growStoneIconRect,
       _ => null,
     };
   }
@@ -134,22 +180,15 @@ class _FakeImageDetector extends ImageDetector {
 }
 
 class _FakeActionController extends ActionController {
-  _FakeActionController({this.onTap, this.onWaitSceneChange});
+  _FakeActionController({this.onTap});
 
   final void Function()? onTap;
-  final void Function()? onWaitSceneChange;
   final List<Rectangle<int>> tapRects = <Rectangle<int>>[];
-  String? launchedPackage;
 
   @override
   Future<void> randomTap(Emulator emulator, Rectangle<int> rect) async {
     tapRects.add(rect);
     onTap?.call();
-  }
-
-  @override
-  Future<void> launchGame(Emulator emulator, String packageName) async {
-    launchedPackage = packageName;
   }
 
   @override
@@ -164,7 +203,6 @@ class _FakeActionController extends ActionController {
     Duration timeout = const Duration(seconds: 10),
     Duration interval = const Duration(milliseconds: 250),
   }) async {
-    onWaitSceneChange?.call();
     return changed();
   }
 }
