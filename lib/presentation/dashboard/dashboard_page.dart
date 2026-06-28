@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../domain/automation/automation_action.dart';
+import '../../domain/automation/automation_config.dart';
 import '../../domain/automation/automation_session.dart';
 import '../../domain/automation/automation_state.dart';
 import '../../domain/decision/decision_state.dart';
-import '../../domain/plugin/game_profile.dart';
 import '../../domain/screenshot/device_screenshot.dart';
 import '../../app/localization/l10n_extension.dart';
 import '../../app/localization/language_manager.dart';
@@ -223,7 +224,6 @@ class _DeviceCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text('$pluginName  v$pluginVersion', style: Theme.of(context).textTheme.titleMedium),
                       Text('角色：${session.character.displayName}$characterLevel'),
-                      Text('Task Profile：${session.taskProfile?.name ?? '未指定'}'),
                     ],
                   ),
                 ),
@@ -254,17 +254,6 @@ class _DeviceCard extends StatelessWidget {
                           if (pluginId != null) controller.assignPlugin(session, pluginId);
                         },
                       ),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        value: session.taskProfile?.id,
-                        decoration: const InputDecoration(labelText: 'Task Profile', isDense: true),
-                        items: (session.plugin?.implementation?.createTaskProfiles() ?? const <TaskProfile>[])
-                            .map((profile) => DropdownMenuItem<String>(value: profile.id, child: Text(profile.name)))
-                            .toList(growable: false),
-                        onChanged: (String? profileId) {
-                          if (profileId != null) controller.assignTaskProfile(session, profileId);
-                        },
-                      ),
                       const SizedBox(height: 12),
                       _RuntimeMonitor(session: session, decision: decision),
                     ],
@@ -273,7 +262,13 @@ class _DeviceCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            _ActionGroups(session: session, controller: controller, onPluginSettings: () => _showPluginSettings(context), onDeviceInfo: () => _showDeviceInfoDialog(context, screenshot)),
+            _ActionGroups(
+              session: session,
+              controller: controller,
+              onPluginSettings: () => _showPluginSettings(context),
+              onAutomationLogic: () => _showAutomationLogicDialog(context),
+              onDeviceInfo: () => _showDeviceInfoDialog(context, screenshot),
+            ),
           ],
         ),
       ),
@@ -299,6 +294,60 @@ class _DeviceCard extends StatelessWidget {
     );
     textController.dispose();
     if (name != null) controller.renameSessionDevice(session, name);
+  }
+
+
+  Future<void> _showAutomationLogicDialog(BuildContext context) async {
+    final actions = controller.automationActionsFor(session);
+    AutomationConfig draft = session.automationConfig ?? AutomationConfig.defaultsFor(session.device.id, actions);
+    final AutomationConfig? saved = await showDialog<AutomationConfig>(
+      context: context,
+      builder: (BuildContext dialogContext) => StatefulBuilder(
+        builder: (BuildContext context, StateSetter setDialogState) {
+          final Map<String, List<AutomationActionDefinition>> byCategory = <String, List<AutomationActionDefinition>>{};
+          for (final AutomationActionDefinition action in actions) {
+            byCategory.putIfAbsent(action.category, () => <AutomationActionDefinition>[]).add(action);
+          }
+          return AlertDialog(
+            title: Text('${session.plugin?.displayName ?? '未指定'}\nAutomation Logic'),
+            content: SizedBox(
+              width: 420,
+              child: actions.isEmpty
+                  ? const Text('目前 Plugin 尚未提供 Automation Actions。')
+                  : SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          for (final entry in byCategory.entries) ...<Widget>[
+                            Text(entry.key, style: Theme.of(context).textTheme.titleMedium),
+                            const Divider(),
+                            for (final action in entry.value)
+                              CheckboxListTile(
+                                dense: true,
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(action.displayName),
+                                subtitle: action.description.isEmpty ? null : Text(action.description),
+                                value: draft.isEnabled(action.id),
+                                onChanged: (bool? value) => setDialogState(() => draft = draft.toggle(action.id, value ?? false)),
+                              ),
+                            const SizedBox(height: 8),
+                          ],
+                        ],
+                      ),
+                    ),
+            ),
+            actions: <Widget>[
+              TextButton(onPressed: () => setDialogState(() => draft = draft.setAll(actions, true)), child: const Text('全部勾選')),
+              TextButton(onPressed: () => setDialogState(() => draft = draft.setAll(actions, false)), child: const Text('全部取消')),
+              TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(context.l10n.cancel)),
+              FilledButton(onPressed: () => Navigator.of(dialogContext).pop(draft), child: Text(context.l10n.save)),
+            ],
+          );
+        },
+      ),
+    );
+    if (saved != null) await controller.saveAutomationConfig(session, saved);
   }
 
   Future<void> _showPluginSettings(BuildContext context) async {
@@ -384,11 +433,12 @@ class _RuntimeMonitor extends StatelessWidget {
 }
 
 class _ActionGroups extends StatelessWidget {
-  const _ActionGroups({required this.session, required this.controller, required this.onPluginSettings, required this.onDeviceInfo});
+  const _ActionGroups({required this.session, required this.controller, required this.onPluginSettings, required this.onAutomationLogic, required this.onDeviceInfo});
 
   final AutomationSession session;
   final AutomationController controller;
   final VoidCallback onPluginSettings;
+  final VoidCallback onAutomationLogic;
   final VoidCallback onDeviceInfo;
 
   @override
@@ -402,10 +452,7 @@ class _ActionGroups extends StatelessWidget {
           OutlinedButton(onPressed: () => controller.captureScreenshot(session), child: Text(context.l10n.screenshot)),
           OutlinedButton(onPressed: () => controller.detectCharacter(session), child: const Text('Detect Character')),
           OutlinedButton(onPressed: onPluginSettings, child: const Text('⚙ Plugin Settings')),
-        ]),
-        _ButtonCluster(children: <Widget>[
-          OutlinedButton(onPressed: () => controller.tapTest(session), child: Text(context.l10n.tapTest)),
-          OutlinedButton(onPressed: () => controller.swipeTest(session), child: Text(context.l10n.swipeTest)),
+          OutlinedButton(onPressed: onAutomationLogic, child: const Text('設定運行邏輯')),
         ]),
         _ButtonCluster(children: <Widget>[
           OutlinedButton(onPressed: () => controller.restartSession(session), child: Text(context.l10n.restartSession)),

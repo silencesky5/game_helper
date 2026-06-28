@@ -1,3 +1,4 @@
+import 'automation_config.dart';
 import '../device/device.dart';
 import '../logger/logger_service.dart';
 import '../plugin/plugin.dart';
@@ -17,6 +18,7 @@ class AutomationSession {
     this.workflowRuntime,
     this.character = const CharacterProfile.notLoggedIn(),
     this.taskProfile,
+    this.automationConfig,
     this.state = AutomationState.idle,
     this.logger,
     this.startedAt,
@@ -44,6 +46,9 @@ class AutomationSession {
   /// Selected task profile for this device/character runtime.
   final TaskProfile? taskProfile;
 
+  /// Device-owned automation logic config.
+  final AutomationConfig? automationConfig;
+
   /// Current automation lifecycle state.
   final AutomationState state;
 
@@ -65,6 +70,7 @@ class AutomationSession {
     WorkflowRuntime? workflowRuntime,
     CharacterProfile? character,
     TaskProfile? taskProfile,
+    AutomationConfig? automationConfig,
     AutomationState? state,
     LoggerService? logger,
     DateTime? startedAt,
@@ -78,6 +84,7 @@ class AutomationSession {
       workflowRuntime: workflowRuntime ?? this.workflowRuntime,
       character: character ?? this.character,
       taskProfile: taskProfile ?? this.taskProfile,
+      automationConfig: automationConfig ?? this.automationConfig,
       state: state ?? this.state,
       logger: logger ?? this.logger,
       startedAt: startedAt ?? this.startedAt,

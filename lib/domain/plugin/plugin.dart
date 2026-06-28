@@ -1,3 +1,4 @@
+import '../automation/automation_action.dart';
 import '../decision/goal.dart';
 import '../workflow/workflow.dart';
 import 'game_profile.dart';
@@ -24,6 +25,9 @@ abstract class GamePlugin {
 
   /// Detects the active character. Plugins own all game-specific parsing.
   Future<CharacterProfile> detectCharacter();
+
+  /// Automation actions available for generated per-device logic UI.
+  List<AutomationActionDefinition> getAutomationActions();
 
   /// Task profiles available for this plugin.
   List<TaskProfile> createTaskProfiles();

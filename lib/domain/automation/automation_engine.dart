@@ -44,7 +44,8 @@ class AutomationEngine {
     final List<AutomationSession> sessions = <AutomationSession>[];
 
     for (final Device device in demoDevices) {
-      final AutomationSession session = createSession(device);
+      final AutomationSession existingSession = context.sessionManager.sessions.where((AutomationSession item) => item.device.id == device.id).firstOrNull ?? createSession(device);
+      final AutomationSession session = existingSession;
       final Workflow workflow = await context.pluginManager.getWorkflow(plugin);
       final WorkflowRuntime runtime = WorkflowRuntime(context: context);
       final AutomationSession runningSession = startSession(
@@ -72,7 +73,12 @@ class AutomationEngine {
       sessions.add(runningSession);
 
       context.workflowEngine.runtime.context = context;
-      context.loggerService.log(LogLevel.info, 'Starting ${runningSession.id} on ${device.name}');
+      final enabledActionIds = runningSession.automationConfig?.enabledActions.entries
+              .where((MapEntry<String, bool> entry) => entry.value)
+              .map((MapEntry<String, bool> entry) => entry.key)
+              .join(' → ') ??
+          'plugin defaults';
+      context.loggerService.log(LogLevel.info, 'Starting ${runningSession.id} on ${device.name} with Automation Logic: $enabledActionIds');
       final List<Goal> goals = plugin.implementation?.createGoals() ?? const <Goal>[];
       final DecisionEngine decisionEngine = DecisionEngine(
         context: context,

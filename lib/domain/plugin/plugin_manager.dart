@@ -1,4 +1,5 @@
 import '../action/device_action.dart';
+import '../automation/automation_action.dart';
 import '../decision/action_plan.dart';
 import '../decision/goal.dart';
 import '../vision/game_state.dart';
@@ -118,6 +119,22 @@ class MineJourneyPlugin implements GamePlugin {
   Future<CharacterProfile> detectCharacter() async {
     return const CharacterProfile(name: '小礦工', level: 'Lv58');
   }
+
+
+  @override
+  List<AutomationActionDefinition> getAutomationActions() => const <AutomationActionDefinition>[
+        AutomationActionDefinition(id: 'autoLogin', displayName: '每日登入', category: '每日任務', description: '啟動遊戲並完成登入流程。', defaultEnabled: true),
+        AutomationActionDefinition(id: 'dailySignIn', displayName: '每日簽到', category: '每日任務', description: '領取每日簽到獎勵。', defaultEnabled: true),
+        AutomationActionDefinition(id: 'claimMail', displayName: '領取信件', category: '每日任務', description: '領取信箱獎勵。', defaultEnabled: true),
+        AutomationActionDefinition(id: 'freeShop', displayName: '免費商店', category: '每日任務', description: '領取商店免費道具。', defaultEnabled: true),
+        AutomationActionDefinition(id: 'craftStone', displayName: '自動合成石頭', category: '資源', description: '自動合成可升級的石頭。', defaultEnabled: true),
+        AutomationActionDefinition(id: 'organizeBag', displayName: '整理背包', category: '資源', description: '清理並排序背包。', defaultEnabled: true),
+        AutomationActionDefinition(id: 'repairEquipment', displayName: '修理裝備', category: '資源', description: '修理損壞裝備。', defaultEnabled: true),
+        AutomationActionDefinition(id: 'mining', displayName: '自動採礦', category: '資源', description: '前往礦區並自動採礦。', defaultEnabled: true),
+        AutomationActionDefinition(id: 'worldBoss', displayName: '世界 Boss', category: '活動', description: '參與世界 Boss。'),
+        AutomationActionDefinition(id: 'eventDungeon', displayName: '活動副本', category: '活動', description: '執行限時活動副本。'),
+        AutomationActionDefinition(id: 'guildQuest', displayName: '公會任務', category: '活動', description: '完成公會任務。'),
+      ];
 
   @override
   List<TaskProfile> createTaskProfiles() => <TaskProfile>[
