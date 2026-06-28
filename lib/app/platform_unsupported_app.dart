@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
+import 'localization/l10n_extension.dart';
+import 'theme.dart';
 
 /// Minimal non-Windows shell used to prevent the automation dashboard from
 /// running inside Android emulators.
@@ -8,16 +12,20 @@ class PlatformUnsupportedApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      title: 'Game Helper Desktop Required',
-      home: Scaffold(
-        body: Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text(
-              'Game Helper Desktop Console runs on Windows only. '
-              'Android emulators are controlled through ADB and must not host the dashboard.',
-              textAlign: TextAlign.center,
+    return MaterialApp(
+      onGenerateTitle: (context) => AppLocalizations.of(context).desktopRequiredTitle,
+      theme: GameHelperTheme.dark(),
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      home: Builder(
+        builder: (context) => Scaffold(
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                context.l10n.desktopRequiredMessage,
+                textAlign: TextAlign.center,
+              ),
             ),
           ),
         ),
