@@ -1,16 +1,14 @@
+import '../../domain/logger/logger.dart';
+import '../../domain/logger/logger_service.dart';
+
+/// Logger implementation that writes messages to the console.
 class ConsoleLogger implements LoggerService {
+  /// Writes a log [message] with the provided [level] to the console.
   @override
-  void info(String message) {
-    print("[INFO] $message");
-  }
-
-  @override
-  void warning(String message) {
-    print("[WARNING] $message");
-  }
-
-  @override
-  void error(String message) {
-    print("[ERROR] $message");
+  void log(
+    LogLevel level,
+    String message,
+  ) {
+    print('[${level.name.toUpperCase()}] $message');
   }
 }
