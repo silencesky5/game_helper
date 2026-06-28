@@ -11,7 +11,7 @@ import 'adb_command_runner.dart';
 import 'adb_manager.dart';
 
 /// ADB implementation of screenshot capture using exec-out screencap -p.
-class AdbScreenshotService implements ScreenshotService {
+class AdbScreenshotService extends ScreenshotService {
   AdbScreenshotService({AdbCommandRunner? commandRunner, ADBManager? adbManager, this.logger, this.maxAttempts = 3})
       : commandRunner = commandRunner ?? AdbCommandRunner(adbManager: adbManager ?? ADBManager(logger: logger));
 
