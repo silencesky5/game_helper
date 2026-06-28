@@ -1,3 +1,4 @@
+import '../decision/goal.dart';
 import '../workflow/workflow.dart';
 
 /// Interface implemented by game plugins loaded by the platform.
@@ -16,6 +17,9 @@ abstract class GamePlugin {
 
   /// Creates the plugin workflow for the current session.
   Workflow createWorkflow();
+
+  /// Creates perception-driven goals for the current session.
+  List<Goal> createGoals();
 }
 
 /// Immutable plugin metadata used by the platform UI and domain services.

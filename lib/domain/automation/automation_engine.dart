@@ -1,3 +1,5 @@
+import '../decision/decision_engine.dart';
+import '../decision/goal.dart';
 import '../device/device.dart';
 import '../logger/logger.dart';
 import '../plugin/plugin.dart';
@@ -71,7 +73,19 @@ class AutomationEngine {
 
       context.workflowEngine.runtime.context = context;
       context.loggerService.log(LogLevel.info, 'Starting ${runningSession.id} on ${device.name}');
-      await context.workflowEngine.execute(workflow);
+      final List<Goal> goals = plugin.implementation?.createGoals() ?? const <Goal>[];
+      final DecisionEngine decisionEngine = DecisionEngine(
+        context: context,
+        config: context.decisionConfig,
+        repository: context.decisionRepository,
+      );
+      if (goals.isEmpty) {
+        await context.workflowEngine.execute(workflow);
+      } else {
+        for (final Goal goal in goals) {
+          await decisionEngine.executeGoal(runningSession, goal);
+        }
+      }
       context.sessionManager.updateSession(
         runningSession.copyWith(state: AutomationState.completed, currentStep: 'Finished'),
       );

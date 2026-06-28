@@ -1,4 +1,6 @@
 import '../control/device_control_service.dart';
+import '../decision/decision_config.dart';
+import '../decision/decision_state.dart';
 import '../device/device_manager.dart';
 import '../logger/logger_service.dart';
 import '../perception/perception_repository.dart';
@@ -53,6 +55,12 @@ class AutomationContext {
   /// Stores latest perception analysis for workflows.
   final PerceptionRepository perceptionRepository;
 
+  /// Decision engine configuration loaded from config/decision.json.
+  final DecisionConfig decisionConfig;
+
+  /// Stores latest decision state for the desktop console.
+  final DecisionRepository decisionRepository;
+
   /// Creates an immutable automation context from explicit dependencies.
   const AutomationContext({
     required this.pluginManager,
@@ -68,5 +76,7 @@ class AutomationContext {
     required this.perceptionService,
     required this.visionRepository,
     required this.perceptionRepository,
+    required this.decisionConfig,
+    required this.decisionRepository,
   });
 }

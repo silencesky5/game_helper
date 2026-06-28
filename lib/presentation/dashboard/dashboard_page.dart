@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/automation/automation_session.dart';
 import '../../domain/automation/automation_state.dart';
+import '../../domain/decision/decision_state.dart';
 import '../../domain/device/device.dart';
 import '../../domain/perception/perception_types.dart';
 import '../../domain/screenshot/device_screenshot.dart';
@@ -121,6 +122,7 @@ class _DeviceCard extends StatelessWidget {
     final DeviceScreenshot? screenshot = controller.screenshotRepository.latest(session.device.id);
     final VisionResult? vision = controller.visionRepository.lastAnalysis(session.device.id);
     final PerceptionResult? perception = controller.perceptionRepository.lastResult(session.device.id);
+    final DecisionStatus? decision = controller.decisionRepository.statusFor(session.device.id);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -158,6 +160,13 @@ class _DeviceCard extends StatelessWidget {
                   Text('Challenge Status: ${perception?.challengeStatus.label ?? 'none'}'),
                   Text('Analysis Time: ${perception?.analysisTime.inMilliseconds ?? 0}ms'),
                   Text('Recent OCR Preview: ${perception?.ocr.preview.isEmpty ?? true ? 'No OCR text' : perception!.ocr.preview}', maxLines: 2, overflow: TextOverflow.ellipsis),
+                  const Divider(height: 16),
+                  Text('Decision Panel', style: Theme.of(context).textTheme.titleSmall),
+                  Text('Current Goal: ${decision?.currentGoal ?? 'Idle'}'),
+                  Text('Current Decision: ${decision?.currentDecision ?? 'Waiting'}'),
+                  Text('Current Action: ${decision?.currentAction ?? 'None'}'),
+                  Text('Retry Count: ${decision?.retryCount ?? 0}'),
+                  Text('Last Decision Time: ${decision?.lastDecisionTime?.toLocal().toString().split('.').first ?? 'Never'}'),
                   const Spacer(),
                   Wrap(
                     spacing: 8,
