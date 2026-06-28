@@ -7,6 +7,9 @@ import '../../domain/automation/automation_engine.dart';
 import '../../domain/automation/automation_session.dart';
 import '../../domain/automation/session_manager.dart';
 import '../../domain/device/device_manager.dart';
+import '../../domain/perception/perception_config.dart';
+import '../../domain/perception/perception_repository.dart';
+import '../../domain/perception/perception_service.dart';
 import '../../domain/plugin/plugin_manager.dart';
 import '../../domain/workflow/workflow_engine.dart';
 import '../../domain/action/device_action.dart';
@@ -44,6 +47,8 @@ class AutomationController extends ChangeNotifier {
 
   VisionRepository get visionRepository => _automationEngine.context.visionRepository;
 
+  PerceptionRepository get perceptionRepository => _automationEngine.context.perceptionRepository;
+
   /// Starts the Mine Journey automation pipeline.
   Future<void> start() async {
     _running = true;
@@ -68,7 +73,7 @@ class AutomationController extends ChangeNotifier {
     switch (result) {
       case Success(:final value):
         _automationEngine.context.screenshotRepository.save(value);
-        await _automationEngine.context.visionService.analyze(session.device.id);
+        await _automationEngine.context.perceptionService.analyze(session.device.id);
       case Failure(:final error):
         _automationEngine.context.loggerService.log(LogLevel.error, '[ADB] Capture Screenshot failed: ${error.message}');
     }
@@ -123,6 +128,13 @@ class AutomationController extends ChangeNotifier {
     final SessionManager sessionManager = SessionManager();
     final ScreenshotRepository screenshotRepository = ScreenshotRepository();
     final VisionRepository visionRepository = VisionRepository();
+    final PerceptionRepository perceptionRepository = PerceptionRepository();
+    final VisionService visionService = VisionService(
+      screenshotRepository: screenshotRepository,
+      visionRepository: visionRepository,
+      config: const VisionConfig(),
+      logger: loggerService,
+    );
 
     return AutomationEngine(
       context: AutomationContext(
@@ -135,13 +147,17 @@ class AutomationController extends ChangeNotifier {
         screenshotService: AdbScreenshotService(logger: loggerService),
         screenshotRepository: screenshotRepository,
         deviceControlService: AdbDeviceControlService(logger: loggerService),
-        visionService: VisionService(
-          screenshotRepository: screenshotRepository,
+        visionService: visionService,
+        perceptionService: PerceptionService(
+          visionService: visionService,
           visionRepository: visionRepository,
-          config: const VisionConfig(),
+          screenshotRepository: screenshotRepository,
+          perceptionRepository: perceptionRepository,
+          config: const PerceptionConfig(),
           logger: loggerService,
         ),
         visionRepository: visionRepository,
+        perceptionRepository: perceptionRepository,
       ),
     );
   }

@@ -1,12 +1,16 @@
+import '../../perception/perception_types.dart';
 import '../workflow_runtime.dart';
 import '../workflow_step.dart';
 
-/// Workflow step that represents an OCR instruction for a named region.
+/// Legacy text-reading workflow step that consumes PerceptionResult OCR text.
+///
+/// Workflows must not call OCR directly; this step only reads semantic data that
+/// has already been produced by the platform PerceptionService.
 class OCRStep extends WorkflowStep {
-  /// Region identifier to be used by a future OCR executor.
+  /// Optional semantic region identifier for workflow authors.
   final String region;
 
-  /// Runtime variable name intended to receive OCR output.
+  /// Runtime variable name that receives OCR text from the latest perception result.
   final String variable;
 
   /// Creates an immutable OCR workflow step.
@@ -17,5 +21,10 @@ class OCRStep extends WorkflowStep {
   }) : super(type: 'ocr');
 
   @override
-  Future<void> execute(WorkflowRuntime runtime) async {}
+  Future<void> execute(WorkflowRuntime runtime) async {
+    final Object? semantic = runtime.getVariable('perceptionResult');
+    if (semantic is PerceptionResult) {
+      runtime.setVariable(variable, semantic.ocr.preview);
+    }
+  }
 }

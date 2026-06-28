@@ -56,9 +56,16 @@ class AutomationEngine {
       );
       context.sessionManager.updateSession(runningSession);
       final screenshotResult = await context.screenshotService.capture(device);
-      screenshotResult.fold(
-        (screenshot) => context.screenshotRepository.save(screenshot),
-        (error) => context.loggerService.log(LogLevel.error, '[ADB] Capture Screenshot failed: ${error.message}'),
+      await screenshotResult.fold(
+        (screenshot) async {
+          context.screenshotRepository.save(screenshot);
+          final perception = await context.perceptionService.analyze(device.id);
+          if (perception != null) {
+            runtime.setVariable('perceptionResult', perception);
+            context.workflowEngine.runtime.setVariable('perceptionResult', perception);
+          }
+        },
+        (error) async => context.loggerService.log(LogLevel.error, '[ADB] Capture Screenshot failed: ${error.message}'),
       );
       sessions.add(runningSession);
 

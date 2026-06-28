@@ -1,6 +1,8 @@
 import '../control/device_control_service.dart';
 import '../device/device_manager.dart';
 import '../logger/logger_service.dart';
+import '../perception/perception_repository.dart';
+import '../perception/perception_service.dart';
 import '../plugin/plugin_manager.dart';
 import '../screenshot/screenshot_repository.dart';
 import '../screenshot/screenshot_service.dart';
@@ -42,8 +44,14 @@ class AutomationContext {
   /// Shared screenshot analysis service.
   final VisionService visionService;
 
+  /// Shared semantic perception service.
+  final PerceptionService perceptionService;
+
   /// Stores latest vision analysis for the desktop console and workflows.
   final VisionRepository visionRepository;
+
+  /// Stores latest perception analysis for workflows.
+  final PerceptionRepository perceptionRepository;
 
   /// Creates an immutable automation context from explicit dependencies.
   const AutomationContext({
@@ -57,6 +65,8 @@ class AutomationContext {
     required this.screenshotRepository,
     required this.deviceControlService,
     required this.visionService,
+    required this.perceptionService,
     required this.visionRepository,
+    required this.perceptionRepository,
   });
 }
