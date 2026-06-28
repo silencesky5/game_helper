@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../domain/automation/automation_session.dart';
 import '../../domain/automation/automation_state.dart';
 import '../../domain/decision/decision_state.dart';
-import '../../domain/device/device.dart';
 import '../../domain/perception/perception_types.dart';
 import '../../domain/screenshot/device_screenshot.dart';
 import '../../domain/vision/vision_types.dart';
@@ -30,6 +29,7 @@ class _DashboardPageState extends State<DashboardPage> {
     super.initState();
     _controller = widget.controller ?? AutomationController();
     _controller.addListener(_onControllerChanged);
+    _controller.initializeDesktopConsole();
   }
 
   @override
@@ -40,7 +40,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    final List<AutomationSession> sessions = _controller.sessions.isEmpty ? _mockSessions : _controller.sessions;
+    final List<AutomationSession> sessions = _controller.sessions;
 
     return Scaffold(
       appBar: AppBar(
@@ -73,21 +73,32 @@ class _DashboardPageState extends State<DashboardPage> {
                     children: <Widget>[
                       Text('Device Sessions', style: Theme.of(context).textTheme.headlineMedium),
                       const Spacer(),
-                      StartButton(onPressed: _controller.running ? null : _controller.start),
+                      OutlinedButton.icon(
+                        onPressed: _controller.detecting ? null : _controller.initializeDesktopConsole,
+                        icon: const Icon(Icons.refresh),
+                        label: Text(_controller.detecting ? 'Detecting...' : 'Detect Devices'),
+                      ),
+                      const SizedBox(width: 12),
+                      StartButton(onPressed: _controller.running || sessions.isEmpty ? null : _controller.start),
                     ],
                   ),
                   const SizedBox(height: 16),
                   Expanded(
-                    child: GridView.count(
-                      crossAxisCount: 2,
-                      childAspectRatio: 2.7,
-                      children: sessions
-                          .map((AutomationSession session) => _DeviceCard(session: session, controller: _controller))
-                          .toList(growable: false),
-                    ),
+                    flex: 3,
+                    child: sessions.isEmpty
+                        ? _EmptyDeviceState(detecting: _controller.detecting)
+                        : GridView.count(
+                            crossAxisCount: 2,
+                            childAspectRatio: 2.7,
+                            children: sessions
+                                .map((AutomationSession session) => _DeviceCard(session: session, controller: _controller))
+                                .toList(growable: false),
+                          ),
                   ),
                   const Divider(),
-                  const Text('Console Logger: engine events are printed to the Dart console.'),
+                  Expanded(
+                    child: _LogPanel(logs: _controller.logs),
+                  ),
                 ],
               ),
             ),
@@ -97,17 +108,70 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  List<AutomationSession> get _mockSessions {
-    return const <AutomationSession>[
-      AutomationSession(id: 'Session 1', device: Device(id: 'demo-1', name: 'LDPlayer1', status: DeviceStatus.online), currentStep: 'Idle'),
-      AutomationSession(id: 'Session 2', device: Device(id: 'demo-2', name: 'LDPlayer2', status: DeviceStatus.online), currentStep: 'Idle'),
-      AutomationSession(id: 'Session 3', device: Device(id: 'demo-3', name: 'LDPlayer3', status: DeviceStatus.offline), currentStep: 'Idle'),
-      AutomationSession(id: 'Session 4', device: Device(id: 'demo-4', name: 'LDPlayer4', status: DeviceStatus.online), currentStep: 'Idle'),
-    ];
-  }
-
   void _onControllerChanged() {
     if (mounted) setState(() {});
+  }
+}
+
+class _EmptyDeviceState extends StatelessWidget {
+  const _EmptyDeviceState({required this.detecting});
+
+  final bool detecting;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(Icons.desktop_windows, size: 64, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(height: 16),
+          Text(
+            detecting ? 'Detecting LDPlayer instances through ADB...' : 'No ADB devices detected',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          const Text('Start LDPlayer and ensure adb devices lists each emulator before launching automation.'),
+        ],
+      ),
+    );
+  }
+}
+
+class _LogPanel extends StatelessWidget {
+  const _LogPanel({required this.logs});
+
+  final List<String> logs;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text('Runtime Logs', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Expanded(
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Theme.of(context).dividerColor),
+            ),
+            child: logs.isEmpty
+                ? const Text('Waiting for desktop console events...')
+                : ListView.builder(
+                    itemCount: logs.length,
+                    itemBuilder: (BuildContext context, int index) => Text(
+                      logs[index],
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
+                    ),
+                  ),
+          ),
+        ),
+      ],
+    );
   }
 }
 
