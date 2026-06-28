@@ -5,6 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Supported UI languages for the desktop console.
 enum AppLanguage {
+  /// Chinese fallback locale.
+  zh(Locale('zh'), 'zh'),
+
   /// Traditional Chinese (Taiwan).
   zhTw(Locale('zh', 'TW'), 'zh_TW'),
 
@@ -23,7 +26,13 @@ enum AppLanguage {
   static AppLanguage? fromLocale(Locale locale) {
     for (final language in values) {
       if (language.locale.languageCode == locale.languageCode &&
-          (language.locale.countryCode == null || language.locale.countryCode == locale.countryCode)) {
+          language.locale.countryCode == locale.countryCode) {
+        return language;
+      }
+    }
+    for (final language in values) {
+      if (language.locale.languageCode == locale.languageCode &&
+          language.locale.countryCode == null) {
         return language;
       }
     }
@@ -73,9 +82,9 @@ class LanguageManager extends ChangeNotifier {
   }
 
   AppLanguage _defaultLanguage(Locale platformLocale) {
-    if (platformLocale.languageCode == 'zh' && platformLocale.countryCode == 'TW') {
-      return AppLanguage.zhTw;
+    if (platformLocale.languageCode == 'zh') {
+      return platformLocale.countryCode == 'TW' ? AppLanguage.zhTw : AppLanguage.zh;
     }
-    return AppLanguage.fromLocale(platformLocale) ?? AppLanguage.en;
+    return AppLanguage.fromLocale(platformLocale) ?? AppLanguage.zhTw;
   }
 }
