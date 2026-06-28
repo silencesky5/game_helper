@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 
 import '../../domain/automation/automation_action.dart';
 import '../../domain/automation/automation_config.dart';
@@ -40,69 +38,9 @@ import '../../domain/screenshot/screenshot_repository.dart';
 import '../../domain/vision/vision_config.dart';
 import '../../domain/vision/vision_repository.dart';
 import '../../automation/engine/image_detector.dart';
-import '../../domain/vision/image_decoder.dart';
-import '../../domain/vision/template_matcher.dart';
 import '../../domain/vision/vision_match.dart';
 import '../../domain/vision/vision_service.dart';
 import 'desktop_console_config.dart';
-
-/// Template metadata and latest calibration state for Vision Calibration.
-class VisionCalibrationTemplate {
-  const VisionCalibrationTemplate({
-    required this.name,
-    required this.assetPath,
-    required this.threshold,
-    this.width,
-    this.height,
-    this.lastConfidence,
-    this.lastMatchTime,
-    this.bestScale,
-    this.result,
-    this.bounds,
-    this.tapPosition,
-  });
-
-  final String name;
-  final String assetPath;
-  final double threshold;
-  final int? width;
-  final int? height;
-  final double? lastConfidence;
-  final DateTime? lastMatchTime;
-  final double? bestScale;
-  final String? result;
-  final VisionBounds? bounds;
-  final Point<int>? tapPosition;
-
-  bool get passed => result == 'PASS';
-  String get sizeLabel => width == null || height == null ? 'Unknown' : '${width}x$height';
-
-  VisionCalibrationTemplate copyWith({
-    double? threshold,
-    int? width,
-    int? height,
-    double? lastConfidence,
-    DateTime? lastMatchTime,
-    double? bestScale,
-    String? result,
-    VisionBounds? bounds,
-    Point<int>? tapPosition,
-  }) {
-    return VisionCalibrationTemplate(
-      name: name,
-      assetPath: assetPath,
-      threshold: threshold ?? this.threshold,
-      width: width ?? this.width,
-      height: height ?? this.height,
-      lastConfidence: lastConfidence ?? this.lastConfidence,
-      lastMatchTime: lastMatchTime ?? this.lastMatchTime,
-      bestScale: bestScale ?? this.bestScale,
-      result: result ?? this.result,
-      bounds: bounds ?? this.bounds,
-      tapPosition: tapPosition ?? this.tapPosition,
-    );
-  }
-}
 
 /// GrowStone template debug data shown by the Automation Debug panel.
 class GrowStoneDebugResult {
@@ -131,22 +69,6 @@ class AutomationController extends ChangeNotifier {
   final Map<String, Scene> _debugScenes = <String, Scene>{};
   final Set<String> _debugModeDevices = <String>{};
 
-  final Map<String, int> _selectedCalibrationIndexes = <String, int>{};
-  final Map<String, List<VisionCalibrationTemplate>> _calibrationTemplates = <String, List<VisionCalibrationTemplate>>{};
-
-  static const List<double> calibrationThresholdOptions = <double>[0.80, 0.85, 0.90, 0.95, 0.98];
-  static const List<double> calibrationScales = <double>[1.00, 0.95, 0.90, 0.85, 0.80];
-  static const List<VisionCalibrationTemplate> _templateLibrary = <VisionCalibrationTemplate>[
-    VisionCalibrationTemplate(name: 'GrowStone Icon', assetPath: 'assets/vision/android/growstone_icon.png', threshold: 0.95),
-    VisionCalibrationTemplate(name: 'Loading Logo', assetPath: 'assets/vision/loading/loading_logo.png', threshold: 0.95),
-    VisionCalibrationTemplate(name: 'Attendance Title', assetPath: 'assets/vision/attendance/attendance_title.png', threshold: 0.95),
-    VisionCalibrationTemplate(name: 'Receive All', assetPath: 'assets/vision/attendance/receive_all.png', threshold: 0.95),
-    VisionCalibrationTemplate(name: 'Close', assetPath: 'assets/vision/attendance/close_button.png', threshold: 0.95),
-    VisionCalibrationTemplate(name: 'Bag', assetPath: 'assets/vision/home/bag.png', threshold: 0.95),
-    VisionCalibrationTemplate(name: 'Shop', assetPath: 'assets/vision/home/shop.png', threshold: 0.95),
-    VisionCalibrationTemplate(name: 'Mail', assetPath: 'assets/vision/home/mail.png', threshold: 0.95),
-    VisionCalibrationTemplate(name: 'Craft', assetPath: 'assets/vision/home/craft.png', threshold: 0.95),
-  ];
 
 
   /// Whether an automation run has been started from the dashboard.
@@ -237,112 +159,6 @@ class AutomationController extends ChangeNotifier {
   }
 
 
-
-  List<VisionCalibrationTemplate> calibrationTemplatesFor(String deviceId) => _calibrationTemplates.putIfAbsent(deviceId, () => _templateLibrary);
-
-  VisionCalibrationTemplate selectedCalibrationTemplateFor(String deviceId) {
-    final templates = calibrationTemplatesFor(deviceId);
-    final index = (_selectedCalibrationIndexes[deviceId] ?? 0).clamp(0, templates.length - 1).toInt();
-    return templates[index];
-  }
-
-  void selectCalibrationTemplate(AutomationSession session, String assetPath) {
-    final templates = calibrationTemplatesFor(session.device.id);
-    final index = templates.indexWhere((template) => template.assetPath == assetPath);
-    if (index >= 0) _selectedCalibrationIndexes[session.device.id] = index;
-    notifyListeners();
-  }
-
-  void updateCalibrationThreshold(AutomationSession session, double threshold) {
-    final templates = List<VisionCalibrationTemplate>.from(calibrationTemplatesFor(session.device.id));
-    final index = (_selectedCalibrationIndexes[session.device.id] ?? 0).clamp(0, templates.length - 1).toInt();
-    templates[index] = templates[index].copyWith(threshold: threshold);
-    _calibrationTemplates[session.device.id] = List<VisionCalibrationTemplate>.unmodifiable(templates);
-    notifyListeners();
-  }
-
-  Future<void> calibrateSelectedTemplate(AutomationSession session) async {
-    await _captureForVision(session);
-    final screenshot = screenshotRepository.latest(session.device.id);
-    if (screenshot == null) return;
-    final templates = List<VisionCalibrationTemplate>.from(calibrationTemplatesFor(session.device.id));
-    final index = (_selectedCalibrationIndexes[session.device.id] ?? 0).clamp(0, templates.length - 1).toInt();
-    final template = templates[index];
-    try {
-      final asset = await _loadCalibrationAsset(template);
-      final image = await const ImageDecoder().decode(ImageBuffer(deviceId: session.device.id, current: screenshot, previous: screenshotRepository.previous(session.device.id)));
-      TemplateMatchResult best = const TemplateMatchResult(templateName: 'N/A', found: false, confidence: 0);
-      var bestScale = 1.0;
-      for (final scale in calibrationScales) {
-        final scaled = _scaleTemplate(asset, scale);
-        final match = await const TemplateMatcher().find(image, scaled, threshold: template.threshold);
-        if (match.confidence > best.confidence) {
-          best = match;
-          bestScale = scale;
-        }
-      }
-      final passed = best.confidence >= template.threshold;
-      final bounds = best.bounds;
-      final tap = bounds == null ? null : Point<int>(bounds.x + bounds.width ~/ 2, bounds.y + bounds.height ~/ 2);
-      templates[index] = template.copyWith(
-        width: asset.width,
-        height: asset.height,
-        lastConfidence: best.confidence,
-        lastMatchTime: DateTime.now(),
-        bestScale: bestScale,
-        result: passed ? 'PASS' : 'FAIL',
-        bounds: bounds,
-        tapPosition: tap,
-      );
-      _calibrationTemplates[session.device.id] = List<VisionCalibrationTemplate>.unmodifiable(templates);
-      _automationEngine.context.loggerService.log(LogLevel.info, '[Vision Calibration] Detect ${template.name} Confidence ${best.confidence.toStringAsFixed(2)} ${passed ? 'PASS' : 'FAIL'}');
-      _updateHomeSceneFromCalibration(session);
-    } on FlutterError catch (error) {
-      templates[index] = template.copyWith(result: 'Missing Asset', lastMatchTime: DateTime.now(), lastConfidence: 0);
-      _calibrationTemplates[session.device.id] = List<VisionCalibrationTemplate>.unmodifiable(templates);
-      _automationEngine.context.loggerService.log(LogLevel.error, '[Vision Calibration] ${template.name} asset unavailable: ${error.message}');
-    }
-    notifyListeners();
-  }
-
-  Future<void> calibrateAllTemplates(AutomationSession session) async {
-    for (var i = 0; i < calibrationTemplatesFor(session.device.id).length; i++) {
-      _selectedCalibrationIndexes[session.device.id] = i;
-      await calibrateSelectedTemplate(session);
-    }
-  }
-
-  void _updateHomeSceneFromCalibration(AutomationSession session) {
-    final byName = {for (final template in calibrationTemplatesFor(session.device.id)) template.name: template};
-    final homePassed = <String>['Bag', 'Shop', 'Mail', 'Craft'].every((name) => byName[name]?.passed ?? false);
-    if (homePassed) _replaceSession(session.id, session.copyWith(currentScene: 'Home'));
-  }
-
-  Future<TemplateAsset> _loadCalibrationAsset(VisionCalibrationTemplate template) async {
-    final bytes = (await rootBundle.load(template.assetPath)).buffer.asUint8List();
-    final image = await const ImageDecoder().decode(ImageBuffer(deviceId: 'template', current: DeviceScreenshot(deviceId: 'template', pngBytes: bytes, updatedAt: DateTime.now()), previous: null));
-    return TemplateAsset(name: template.name, width: image.width, height: image.height, rgbaBytes: image.rgbaBytes);
-  }
-
-  TemplateAsset _scaleTemplate(TemplateAsset template, double scale) {
-    if (scale == 1) return template;
-    final width = max(1, (template.width * scale).round());
-    final height = max(1, (template.height * scale).round());
-    final bytes = Uint8List(width * height * 4);
-    for (var y = 0; y < height; y++) {
-      for (var x = 0; x < width; x++) {
-        final sourceX = min(template.width - 1, (x / scale).floor());
-        final sourceY = min(template.height - 1, (y / scale).floor());
-        final sourceOffset = ((sourceY * template.width) + sourceX) * 4;
-        final targetOffset = ((y * width) + x) * 4;
-        bytes[targetOffset] = template.rgbaBytes[sourceOffset];
-        bytes[targetOffset + 1] = template.rgbaBytes[sourceOffset + 1];
-        bytes[targetOffset + 2] = template.rgbaBytes[sourceOffset + 2];
-        bytes[targetOffset + 3] = template.rgbaBytes[sourceOffset + 3];
-      }
-    }
-    return TemplateAsset(name: template.name, width: width, height: height, rgbaBytes: bytes);
-  }
 
   /// Starts the Mine Journey automation pipeline.
   Future<void> start() async {
