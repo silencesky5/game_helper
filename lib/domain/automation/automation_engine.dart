@@ -1,3 +1,4 @@
+import '../logger/logger.dart';
 import '../logger/logger_service.dart';
 import '../plugin/plugin.dart';
 import '../workflow/workflow.dart';
@@ -8,8 +9,8 @@ import 'automation_state.dart';
 
 /// Platform automation orchestrator.
 ///
-/// The engine owns no plugin or workflow runtime state. It only creates and
-/// transitions immutable [AutomationSession] instances.
+/// The engine connects plugin loading, workflow execution, and device services
+/// without knowing concrete workflow step implementations.
 class AutomationEngine {
   /// Domain services available to the automation runtime.
   final AutomationContext context;
@@ -32,8 +33,31 @@ class AutomationEngine {
     );
   }
 
+  /// Starts the first end-to-end execution pipeline for [pluginId].
+  Future<void> start(String pluginId) async {
+    context.loggerService.log(LogLevel.info, 'Automation Started');
+
+    if (context.pluginManager.plugins.isEmpty) {
+      await context.pluginManager.initialize();
+    }
+
+    final Plugin? plugin = context.pluginManager.getPlugin(pluginId);
+
+    if (plugin == null) {
+      throw StateError('Plugin not found: $pluginId');
+    }
+
+    final Workflow workflow = await context.pluginManager.getWorkflow(plugin);
+    context.loggerService.log(LogLevel.info, 'Workflow Loaded');
+
+    context.workflowEngine.runtime.context = context;
+    await context.workflowEngine.execute(workflow);
+
+    context.loggerService.log(LogLevel.info, 'Automation Finished');
+  }
+
   /// Marks [session] as running without executing workflow steps.
-  AutomationSession start(AutomationSession session) {
+  AutomationSession startSession(AutomationSession session) {
     return session.copyWith(state: AutomationState.running);
   }
 

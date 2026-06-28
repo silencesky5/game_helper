@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.7.0
+
+### First Execution Pipeline
+
+- Added the dashboard Start Automation action.
+- Connected AutomationEngine to PluginManager and WorkflowEngine.
+- Added the Mine Journey mock workflow with one tap at x = 300, y = 500.
+- Routed TapStep execution through DeviceService and AdbDeviceService.
+- Added SPEC-007 documentation.
+
 ## v0.6.0
 
 ### Automation Runtime Kernel

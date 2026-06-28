@@ -1,3 +1,4 @@
+import '../../logger/logger.dart';
 import '../workflow_runtime.dart';
 import '../workflow_step.dart';
 
@@ -17,5 +18,14 @@ class TapStep extends WorkflowStep {
   }) : super(type: 'tap');
 
   @override
-  Future<void> execute(WorkflowRuntime runtime) async {}
+  Future<void> execute(WorkflowRuntime runtime) async {
+    final context = runtime.context;
+
+    if (context == null) {
+      throw StateError('WorkflowRuntime requires an AutomationContext.');
+    }
+
+    context.loggerService.log(LogLevel.info, 'Executing TapStep');
+    await context.deviceManager.deviceService.tap(x, y);
+  }
 }

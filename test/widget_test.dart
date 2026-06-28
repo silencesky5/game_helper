@@ -3,16 +3,14 @@ import 'package:game_helper/app/app.dart';
 
 void main() {
   testWidgets(
-    'GameHelperApp shows installed plugins',
+    'GameHelperApp shows the dashboard start action',
     (WidgetTester tester) async {
       await tester.pumpWidget(const GameHelperApp());
       await tester.pumpAndSettle();
 
       expect(find.byType(GameHelperApp), findsOneWidget);
-      expect(find.text('Installed Plugins'), findsOneWidget);
-      expect(find.text('Mine Journey'), findsOneWidget);
-      expect(find.text('Version 1.0'), findsOneWidget);
-      expect(find.text('Enabled'), findsOneWidget);
+      expect(find.text('Game Helper Dashboard'), findsOneWidget);
+      expect(find.text('Start Automation'), findsOneWidget);
     },
   );
 }
