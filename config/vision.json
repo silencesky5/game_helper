@@ -1,0 +1,11 @@
+{
+  "matchingThreshold": 0.85,
+  "refreshIntervalMs": 1000,
+  "cacheTimeMs": 500,
+  "detectionArea": {
+    "x": 0,
+    "y": 0,
+    "width": 0,
+    "height": 0
+  }
+}
