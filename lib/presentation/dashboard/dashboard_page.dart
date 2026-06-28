@@ -261,8 +261,6 @@ class _DeviceCard extends StatelessWidget {
                       _InfoRow(label: 'Image Size', value: screenshot?.sizeLabel ?? 'Unknown'),
                       const SizedBox(height: 12),
                       _AutomationDebugPanel(session: session, controller: controller),
-                      const SizedBox(height: 12),
-                      _VisionCalibrationPanel(session: session, controller: controller, screenshot: screenshot),
                     ],
                   ),
                 ),
@@ -505,119 +503,6 @@ class _AutomationDebugPanel extends StatelessWidget {
   }
 }
 
-
-class _VisionCalibrationPanel extends StatelessWidget {
-  const _VisionCalibrationPanel({required this.session, required this.controller, required this.screenshot});
-
-  final AutomationSession session;
-  final AutomationController controller;
-  final DeviceScreenshot? screenshot;
-
-  @override
-  Widget build(BuildContext context) {
-    final templates = controller.calibrationTemplatesFor(session.device.id);
-    final selected = controller.selectedCalibrationTemplateFor(session.device.id);
-    final homeTemplates = templates.where((template) => <String>{'Bag', 'Shop', 'Mail', 'Craft'}.contains(template.name)).toList(growable: false);
-    final scene = homeTemplates.isNotEmpty && homeTemplates.every((template) => template.passed) ? 'Home' : session.currentScene;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(color: Theme.of(context).dividerColor),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Text('Vision Calibration', style: Theme.of(context).textTheme.titleMedium),
-              const Spacer(),
-              OutlinedButton(onPressed: () => controller.calibrateSelectedTemplate(session), child: const Text('Calibrate')),
-              const SizedBox(width: 8),
-              OutlinedButton(onPressed: () => controller.calibrateAllTemplates(session), child: const Text('Calibrate All')),
-            ],
-          ),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<String>(
-            value: selected.assetPath,
-            decoration: const InputDecoration(labelText: 'Template List', isDense: true),
-            items: templates.map((template) => DropdownMenuItem<String>(value: template.assetPath, child: Text(template.name))).toList(growable: false),
-            onChanged: (String? value) {
-              if (value != null) controller.selectCalibrationTemplate(session, value);
-            },
-          ),
-          const SizedBox(height: 8),
-          _InfoRow(label: 'Name', value: selected.name),
-          _InfoRow(label: 'Size', value: selected.sizeLabel),
-          _InfoRow(label: 'Confidence', value: selected.lastConfidence?.toStringAsFixed(2) ?? 'N/A'),
-          _InfoRow(label: 'Threshold', value: selected.threshold.toStringAsFixed(2)),
-          _InfoRow(label: 'Best Scale', value: selected.bestScale == null ? 'N/A' : '${(selected.bestScale! * 100).round()}%'),
-          _InfoRow(label: 'Match Result', value: selected.result ?? 'Not Calibrated', valueColor: selected.passed ? Colors.green : selected.result == 'FAIL' ? Colors.red : null),
-          _InfoRow(label: 'Last Match', value: selected.lastMatchTime?.toLocal().toString().split('.').first ?? 'N/A'),
-          Slider(
-            min: 0.80,
-            max: 0.98,
-            divisions: 18,
-            value: selected.threshold,
-            label: selected.threshold.toStringAsFixed(2),
-            onChanged: (double value) => controller.updateCalibrationThreshold(session, double.parse(value.toStringAsFixed(2))),
-          ),
-          Wrap(
-            spacing: 6,
-            children: AutomationController.calibrationThresholdOptions
-                .map((threshold) => ChoiceChip(
-                      label: Text(threshold.toStringAsFixed(2)),
-                      selected: selected.threshold == threshold,
-                      onSelected: (_) => controller.updateCalibrationThreshold(session, threshold),
-                    ))
-                .toList(growable: false),
-          ),
-          const SizedBox(height: 8),
-          Text('Scene Inspector', style: Theme.of(context).textTheme.titleSmall),
-          _InfoRow(label: 'Current Scene', value: scene),
-          for (final template in homeTemplates) _InfoRow(label: template.name, value: template.result ?? 'Not Calibrated', valueColor: template.passed ? Colors.green : null),
-          const SizedBox(height: 8),
-          Text('Screenshot Compare', style: Theme.of(context).textTheme.titleSmall),
-          SizedBox(
-            height: 160,
-            child: Row(
-              children: <Widget>[
-                Expanded(child: _ScreenshotPreview(screenshot: screenshot)),
-                const SizedBox(width: 8),
-                Expanded(child: _TemplatePreview(template: selected)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TemplatePreview extends StatelessWidget {
-  const _TemplatePreview({required this.template});
-
-  final VisionCalibrationTemplate template;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).dividerColor),
-      ),
-      child: Image.asset(
-        template.assetPath,
-        fit: BoxFit.contain,
-        errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) => Center(child: Text('Template\n${template.name}\nMissing', textAlign: TextAlign.center)),
-      ),
-    );
-  }
-}
 
 class _ActionGroups extends StatelessWidget {
   const _ActionGroups({required this.session, required this.controller, required this.onPluginSettings, required this.onAutomationLogic, required this.onDeviceInfo});
