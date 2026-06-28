@@ -12,7 +12,7 @@ class ImageDecoder {
     final ui.ImageDescriptor descriptor = await ui.ImageDescriptor.encoded(immutableBuffer);
     final ui.Codec codec = await descriptor.instantiateCodec();
     final ui.FrameInfo frame = await codec.getNextFrame();
-    final ui.ByteData? bytes = await frame.image.toByteData(format: ui.ImageByteFormat.rawRgba);
+    final ByteData? bytes = await frame.image.toByteData(format: ui.ImageByteFormat.rawRgba);
     if (bytes == null) {
       throw StateError('Unable to decode screenshot pixels for ${buffer.deviceId}');
     }
