@@ -3,6 +3,7 @@ import '../logger/logger_service.dart';
 import '../plugin/plugin_manager.dart';
 import '../storage/storage_service.dart';
 import '../workflow/workflow_engine.dart';
+import 'session_manager.dart';
 
 /// Immutable dependency bundle for automation runtime services.
 class AutomationContext {
@@ -18,6 +19,9 @@ class AutomationContext {
   /// Logger service available to automation sessions.
   final LoggerService loggerService;
 
+  /// Session manager that maps one device to one session.
+  final SessionManager sessionManager;
+
   /// Storage service available to automation sessions.
   final StorageService storageService;
 
@@ -27,6 +31,7 @@ class AutomationContext {
     required this.workflowEngine,
     required this.deviceManager,
     required this.loggerService,
+    required this.sessionManager,
     required this.storageService,
   });
 }

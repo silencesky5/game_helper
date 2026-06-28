@@ -6,8 +6,8 @@ class AdbDevice extends Device {
   const AdbDevice({
     required super.id,
     required super.name,
-    required super.model,
-    required super.androidVersion,
-    required super.isOnline,
+    required super.status,
+    super.model,
+    super.androidVersion,
   });
 }

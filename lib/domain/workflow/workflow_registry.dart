@@ -7,13 +7,8 @@ class WorkflowRegistry {
 
   /// Registers the platform default workflow step type identifiers.
   void registerDefaultSteps() {
-    register('tap');
-    register('swipe');
     register('delay');
-    register('wait');
-    register('ocr');
-    register('if');
-    register('loop');
+    register('log');
   }
 
   /// Registers a workflow step [type].
