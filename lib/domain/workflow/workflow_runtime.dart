@@ -1,10 +1,15 @@
+import '../automation/automation_context.dart';
+
 /// Holds in-memory state for a workflow execution.
 class WorkflowRuntime {
+  /// Automation services available to workflow steps during execution.
+  AutomationContext? context;
+
   /// Runtime variables available to workflow steps during execution.
   final Map<String, Object?> variables;
 
   /// Creates an empty workflow runtime.
-  WorkflowRuntime() : variables = <String, Object?>{};
+  WorkflowRuntime({this.context}) : variables = <String, Object?>{};
 
   /// Stores [value] under [key] in the runtime variable map.
   void setVariable(String key, Object? value) {

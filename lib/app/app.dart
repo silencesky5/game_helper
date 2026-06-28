@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../presentation/plugins/plugins_page.dart';
+import '../presentation/dashboard/dashboard_page.dart';
 
 /// Root widget for the Game Helper application.
 class GameHelperApp extends StatelessWidget {
@@ -11,7 +11,7 @@ class GameHelperApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
-      home: PluginsPage(),
+      home: DashboardPage(),
     );
   }
 }
