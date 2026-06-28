@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/plugin/plugin.dart';
 import '../../domain/plugin/plugin_manager.dart';
+import '../../app/localization/l10n_extension.dart';
 
 /// Read-only page that lists installed plugins.
 class PluginsPage extends StatefulWidget {
@@ -33,7 +34,7 @@ class _PluginsPageState extends State<PluginsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Installed Plugins'),
+        title: Text(context.l10n.installedPlugins),
       ),
       body: FutureBuilder<void>(
         future: _initializePlugins,
@@ -45,7 +46,7 @@ class _PluginsPageState extends State<PluginsPage> {
           final List<Plugin> plugins = _pluginManager.plugins;
 
           if (plugins.isEmpty) {
-            return const Center(child: Text('No plugins installed'));
+            return Center(child: Text(context.l10n.noPluginsInstalled));
           }
 
           return ListView.separated(
@@ -60,8 +61,8 @@ class _PluginsPageState extends State<PluginsPage> {
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text('Version ${plugin.version}'),
-                      Text(plugin.enabled ? 'Enabled' : 'Disabled'),
+                      Text(context.l10n.version(plugin.version)),
+                      Text(plugin.enabled ? context.l10n.enabled : context.l10n.disabled),
                     ],
                   ),
                 ),
