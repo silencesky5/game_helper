@@ -12,9 +12,17 @@ import 'task_scheduler.dart';
 /// Plugin-based automation engine with a single [start] entry point.
 class AutomationEngine {
   /// Creates the platform automation engine.
-  AutomationEngine({required this.database, List<GameTask>? tasks, this.scheduler = const TaskScheduler(), this.executor = const TaskExecutor(), StateManager? stateManager, this.actionController = const ActionController(), this.log = _defaultLog})
-      : tasks = tasks ?? defaultGameTasks,
-        stateManager = stateManager ?? StateManager();
+  AutomationEngine({
+    required this.database,
+    List<GameTask>? tasks,
+    this.scheduler = const TaskScheduler(),
+    this.executor = const TaskExecutor(),
+    StateManager? stateManager,
+    ActionController? actionController,
+    this.log = _defaultLog,
+  })  : tasks = tasks ?? defaultGameTasks,
+        stateManager = stateManager ?? StateManager(),
+        actionController = actionController ?? ActionController();
 
   final LocalDatabase database;
   final List<GameTask> tasks;
@@ -28,7 +36,12 @@ class AutomationEngine {
   Future<List<TaskResult>> start(Emulator emulator) async {
     final profile = await database.loadProfile(emulator.id);
     final queue = scheduler.createQueue(profile, tasks);
-    final context = TaskContext(emulator: emulator, stateManager: stateManager, actionController: actionController, log: _timestampedLog);
+    final context = TaskContext(
+      emulator: emulator,
+      stateManager: stateManager,
+      actionController: actionController,
+      log: _timestampedLog,
+    );
     return executor.execute(queue, context);
   }
 

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 /// Central image-recognition facade for OpenCV, OCR, and template matching.
 class ImageDetector {
   /// Creates an image detector placeholder.
@@ -5,6 +7,12 @@ class ImageDetector {
 
   /// Finds a named UI template on the current emulator screen.
   Future<bool> findTemplate(String templateId) async => false;
+
+  /// Finds the screen rectangle occupied by a named template.
+  Future<Rectangle<int>?> findTemplateRect(String templateId) async => null;
+
+  /// Returns whether a template's visual state is bright/enabled.
+  Future<bool> isTemplateBright(String templateId) async => false;
 
   /// Reads text using OCR from the current screen.
   Future<String> readText() async => '';
