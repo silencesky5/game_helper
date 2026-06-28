@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
+import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -41,6 +42,7 @@ import '../../domain/vision/vision_repository.dart';
 import '../../automation/engine/image_detector.dart';
 import '../../domain/vision/image_decoder.dart';
 import '../../domain/vision/template_matcher.dart';
+import '../../domain/vision/vision_match.dart';
 import '../../domain/vision/vision_service.dart';
 import 'desktop_console_config.dart';
 
@@ -108,7 +110,7 @@ class GrowStoneDebugResult {
 
   final bool found;
   final double? confidence;
-  final Rectangle<int>? rect;
+  final Rect? rect;
   final Point<int>? tapPosition;
 }
 
@@ -456,53 +458,25 @@ class AutomationController extends ChangeNotifier {
   Future<GrowStoneDebugResult> detectGrowStone(AutomationSession session) async {
     _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Detect GrowStone');
     await _captureForVision(session);
-    final detector = const ImageDetector();
-    final rect = await detector.findTemplateRect(VisionTemplates.androidGrowstoneIcon);
-    final found = rect != null || await detector.findIcon(VisionTemplates.androidGrowstoneIcon);
+    final screenshot = screenshotRepository.latest(session.device.id);
+    final VisionMatch match = screenshot == null
+        ? const VisionMatch(found: false, confidence: 0, rect: null)
+        : await _automationEngine.context.visionService.findGrowStone(screenshot);
+    final rect = match.rect;
+    final found = match.found;
     final tapPosition = rect == null ? null : _randomPointIn(rect);
-    final result = GrowStoneDebugResult(found: found, confidence: found ? 1 : 0, rect: rect, tapPosition: tapPosition);
+    final result = GrowStoneDebugResult(found: found, confidence: match.confidence, rect: rect, tapPosition: tapPosition);
     _growStoneDebugResults[session.device.id] = result;
     _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Found ${found ? 'YES' : 'NO'}');
     if (rect != null) {
       _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Confidence ${result.confidence!.toStringAsFixed(2)}');
-      _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Rect L${rect.left} T${rect.top} R${rect.right} B${rect.bottom}');
+      _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Rect L${rect.left.toStringAsFixed(0)} T${rect.top.toStringAsFixed(0)} R${rect.right.toStringAsFixed(0)} B${rect.bottom.toStringAsFixed(0)}');
       _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Random Position X=${tapPosition!.x} Y=${tapPosition.y}');
     } else if (!found) {
       _automationEngine.context.loggerService.log(LogLevel.warning, '[Automation Debug] GrowStone Icon Not Found');
     }
     notifyListeners();
     return result;
-  }
-
-  /// Calculates a new random tap preview without sending ADB input.
-  Future<void> previewRandomTap(AutomationSession session) async {
-    final current = _growStoneDebugResults[session.device.id];
-    final result = current?.rect == null ? await detectGrowStone(session) : GrowStoneDebugResult(found: current!.found, confidence: current.confidence, rect: current.rect, tapPosition: _randomPointIn(current.rect!));
-    _growStoneDebugResults[session.device.id] = result;
-    if (result.tapPosition != null) {
-      _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Generate Random X=${result.tapPosition!.x} Y=${result.tapPosition!.y}');
-    }
-    notifyListeners();
-  }
-
-
-  /// Records that the dashboard overlay is visible for the latest GrowStone rectangle.
-  void logVisionOverlay(AutomationSession session) {
-    final result = _growStoneDebugResults[session.device.id];
-    if (result?.rect == null) {
-      _automationEngine.context.loggerService.log(LogLevel.warning, '[Automation Debug] Vision Overlay unavailable: detect GrowStone first');
-    } else {
-      final rect = result!.rect!;
-      _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Vision Overlay Rect L${rect.left} T${rect.top} R${rect.right} B${rect.bottom} Tap=${result.tapPosition}');
-    }
-    notifyListeners();
-  }
-
-  /// Runs the popup debug hook without continuing automation.
-  void testPopup(AutomationSession session) {
-    _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Test Popup requested for ${session.device.name}');
-    _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Stop');
-    notifyListeners();
   }
 
   /// Detects GrowStone, random-taps the icon once through ADB, and stops.
@@ -518,10 +492,10 @@ class AutomationController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Point<int> _randomPointIn(Rectangle<int> rect) {
-    final width = max(1, rect.width);
-    final height = max(1, rect.height);
-    return Point<int>(rect.left + _random.nextInt(width), rect.top + _random.nextInt(height));
+  Point<int> _randomPointIn(Rect rect) {
+    final width = max(1, rect.width.floor());
+    final height = max(1, rect.height.floor());
+    return Point<int>(rect.left.floor() + _random.nextInt(width), rect.top.floor() + _random.nextInt(height));
   }
 
   String _sceneLabel(Scene scene) => switch (scene) {

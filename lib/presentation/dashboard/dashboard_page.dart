@@ -236,7 +236,7 @@ class _DeviceCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                _ScreenshotPreview(screenshot: screenshot, growStone: controller.growStoneDebugFor(session.device.id), calibrationTemplate: controller.selectedCalibrationTemplateFor(session.device.id)),
+                _ScreenshotPreview(screenshot: screenshot),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
@@ -453,7 +453,6 @@ class _AutomationDebugPanel extends StatelessWidget {
     final GrowStoneDebugResult? growStone = controller.growStoneDebugFor(session.device.id);
     final String scene = controller.debugSceneFor(session.device.id)?.name ?? session.currentScene;
     final rect = growStone?.rect;
-    final tap = growStone?.tapPosition;
 
     return Container(
       width: double.infinity,
@@ -485,20 +484,16 @@ class _AutomationDebugPanel extends StatelessWidget {
               OutlinedButton(onPressed: () => controller.detectGrowStone(session), child: const Text('Detect GrowStone')),
               OutlinedButton(onPressed: () => controller.testGrowStoneTap(session), child: const Text('Test Tap')),
               OutlinedButton(onPressed: () => controller.captureScreenshot(session), child: const Text('Screenshot')),
-              OutlinedButton(onPressed: () => controller.previewRandomTap(session), child: const Text('Test Random Tap')),
-              OutlinedButton(onPressed: () => controller.logVisionOverlay(session), child: const Text('Vision Overlay')),
-              OutlinedButton(onPressed: () => controller.testPopup(session), child: const Text('Test Popup')),
             ],
           ),
           const SizedBox(height: 8),
           _InfoRow(label: 'Current Scene', value: _formatScene(scene)),
           _InfoRow(label: 'Found', value: growStone == null ? 'N/A' : (growStone.found ? 'YES' : 'NO')),
           _InfoRow(label: 'Confidence', value: growStone?.confidence?.toStringAsFixed(2) ?? 'N/A'),
-          _InfoRow(label: 'Left', value: rect?.left.toString() ?? 'N/A'),
-          _InfoRow(label: 'Top', value: rect?.top.toString() ?? 'N/A'),
-          _InfoRow(label: 'Right', value: rect?.right.toString() ?? 'N/A'),
-          _InfoRow(label: 'Bottom', value: rect?.bottom.toString() ?? 'N/A'),
-          _InfoRow(label: 'Tap Position', value: tap == null ? 'N/A' : '(${tap.x},${tap.y})'),
+          _InfoRow(label: 'Left', value: rect?.left.toStringAsFixed(0) ?? 'N/A'),
+          _InfoRow(label: 'Top', value: rect?.top.toStringAsFixed(0) ?? 'N/A'),
+          _InfoRow(label: 'Right', value: rect?.right.toStringAsFixed(0) ?? 'N/A'),
+          _InfoRow(label: 'Bottom', value: rect?.bottom.toStringAsFixed(0) ?? 'N/A'),
         ],
       ),
     );
@@ -589,7 +584,7 @@ class _VisionCalibrationPanel extends StatelessWidget {
             height: 160,
             child: Row(
               children: <Widget>[
-                Expanded(child: _ScreenshotPreview(screenshot: screenshot, calibrationTemplate: selected)),
+                Expanded(child: _ScreenshotPreview(screenshot: screenshot)),
                 const SizedBox(width: 8),
                 Expanded(child: _TemplatePreview(template: selected)),
               ],
@@ -716,72 +711,10 @@ class _InfoRow extends StatelessWidget {
 
 
 
-class _CalibrationOverlayPainter extends CustomPainter {
-  const _CalibrationOverlayPainter(this.template, this.screenshot);
-
-  final VisionCalibrationTemplate template;
-  final DeviceScreenshot screenshot;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final bounds = template.bounds;
-    if (bounds == null) return;
-    final scaleX = size.width / (screenshot.width ?? size.width);
-    final scaleY = size.height / (screenshot.height ?? size.height);
-    final rect = Rect.fromLTWH(bounds.x * scaleX, bounds.y * scaleY, bounds.width * scaleX, bounds.height * scaleY);
-    final paint = Paint()
-      ..color = template.passed ? Colors.greenAccent : Colors.orangeAccent
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-    canvas.drawRect(rect, paint);
-    final label = TextPainter(
-      text: TextSpan(text: template.name, style: const TextStyle(color: Colors.white, backgroundColor: Colors.black54, fontSize: 12)),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    label.paint(canvas, Offset(rect.left, (rect.top - 16).clamp(0, size.height - 12).toDouble()));
-    final tap = template.tapPosition;
-    if (tap != null) canvas.drawCircle(Offset(tap.x * scaleX, tap.y * scaleY), 4, Paint()..color = Colors.redAccent);
-  }
-
-  @override
-  bool shouldRepaint(covariant _CalibrationOverlayPainter oldDelegate) => oldDelegate.template != template || oldDelegate.screenshot != screenshot;
-}
-
-class _VisionOverlayPainter extends CustomPainter {
-  const _VisionOverlayPainter(this.growStone, this.screenshot);
-
-  final GrowStoneDebugResult growStone;
-  final DeviceScreenshot screenshot;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = growStone.rect;
-    if (rect == null) return;
-    final paint = Paint()
-      ..color = Colors.greenAccent
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-    final scaleX = size.width / (screenshot.width ?? size.width);
-    final scaleY = size.height / (screenshot.height ?? size.height);
-    final overlayRect = Rect.fromLTRB(rect.left * scaleX, rect.top * scaleY, rect.right * scaleX, rect.bottom * scaleY);
-    canvas.drawRect(overlayRect, paint);
-    final tap = growStone.tapPosition;
-    if (tap != null) {
-      final dot = Paint()..color = Colors.redAccent;
-      canvas.drawCircle(Offset(tap.x * scaleX, tap.y * scaleY), 4, dot);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _VisionOverlayPainter oldDelegate) => oldDelegate.growStone != growStone || oldDelegate.screenshot != screenshot;
-}
-
 class _ScreenshotPreview extends StatelessWidget {
-  const _ScreenshotPreview({required this.screenshot, this.growStone, this.calibrationTemplate});
+  const _ScreenshotPreview({required this.screenshot});
 
   final DeviceScreenshot? screenshot;
-  final GrowStoneDebugResult? growStone;
-  final VisionCalibrationTemplate? calibrationTemplate;
 
   @override
   Widget build(BuildContext context) {
@@ -807,8 +740,6 @@ class _ScreenshotPreview extends StatelessWidget {
                 fit: StackFit.expand,
                 children: <Widget>[
                   Image.memory(screenshot!.pngBytes, fit: BoxFit.cover, gaplessPlayback: true),
-                  if (growStone?.rect != null) CustomPaint(painter: _VisionOverlayPainter(growStone!, screenshot!)),
-                  if (calibrationTemplate?.bounds != null) CustomPaint(painter: _CalibrationOverlayPainter(calibrationTemplate!, screenshot!)),
                 ],
               ),
             ),

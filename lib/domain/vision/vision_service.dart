@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:ui';
+
+import 'package:flutter/services.dart';
 
 import '../logger/logger.dart';
 import '../logger/logger_service.dart';
@@ -10,6 +13,7 @@ import 'image_decoder.dart';
 import 'state_detector.dart';
 import 'template_matcher.dart';
 import 'vision_config.dart';
+import 'vision_match.dart';
 import 'vision_repository.dart';
 import 'vision_types.dart';
 
@@ -69,6 +73,40 @@ class VisionService {
     if (previousState != state) logger?.log(LogLevel.info, '[VISION] State Changed ${previousState.name} -> ${state.name}');
     logger?.log(LogLevel.info, '[VISION] Analysis Time ${stopwatch.elapsedMilliseconds}ms for $deviceId');
     return result;
+  }
+
+
+  /// Finds the GrowStone launcher icon in a captured ADB screenshot.
+  Future<VisionMatch> findGrowStone(DeviceScreenshot screenshot) async {
+    const assetPath = 'assets/vision/android/growstone_icon.png';
+    try {
+      final bytes = (await rootBundle.load(assetPath)).buffer.asUint8List();
+      final image = await imageDecoder.decode(ImageBuffer(deviceId: screenshot.deviceId, current: screenshot));
+      final templateImage = await imageDecoder.decode(
+        ImageBuffer(
+          deviceId: 'growstone-template',
+          current: DeviceScreenshot(deviceId: 'growstone-template', pngBytes: bytes, updatedAt: DateTime.now()),
+        ),
+      );
+      final match = await templateMatcher.find(
+        image,
+        TemplateAsset(name: 'GrowStone', width: templateImage.width, height: templateImage.height, rgbaBytes: templateImage.rgbaBytes),
+        threshold: config.matchingThreshold,
+      );
+      final bounds = match.bounds;
+      final rect = bounds == null
+          ? null
+          : Rect.fromLTWH(
+              bounds.x.toDouble(),
+              bounds.y.toDouble(),
+              bounds.width.toDouble(),
+              bounds.height.toDouble(),
+            );
+      return VisionMatch(found: match.found, confidence: match.confidence, rect: rect);
+    } on FlutterError catch (error) {
+      logger?.log(LogLevel.error, '[VISION] GrowStone template unavailable: ${error.message}');
+      return const VisionMatch(found: false, confidence: 0, rect: null);
+    }
   }
 
   Future<TemplateMatchResult> findTemplate(DecodedImageBuffer image, TemplateAsset template) {
