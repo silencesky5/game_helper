@@ -175,7 +175,7 @@
   "swipeTest": "滑動測試",
   "restartSession": "重新啟動工作階段",
   "noScreenshot": "沒有擷取畫面",
-  "startAutomation": "開始自動化",
+  "startAutomation": "全部開始",
   "installedPlugins": "已安裝插件",
   "noPluginsInstalled": "未安裝插件",
   "version": "版本 {version}",
