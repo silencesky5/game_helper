@@ -5,6 +5,7 @@ import '../../domain/automation/automation_config.dart';
 import '../../domain/automation/automation_session.dart';
 import '../../domain/automation/automation_state.dart';
 import '../../domain/screenshot/device_screenshot.dart';
+import '../../infrastructure/adb/adb_manager.dart';
 import '../../app/localization/l10n_extension.dart';
 import '../../app/localization/language_manager.dart';
 import 'automation_controller.dart';
@@ -80,15 +81,9 @@ class _DashboardPageState extends State<DashboardPage> {
                 children: <Widget>[
                   Row(
                     children: <Widget>[
-                      Text(context.l10n.deviceSessions, style: Theme.of(context).textTheme.headlineMedium),
+                      Text('Game Helper Platform', style: Theme.of(context).textTheme.headlineMedium),
                       const Spacer(),
-                      OutlinedButton.icon(
-                        onPressed: _controller.detecting ? null : _controller.initializeDesktopConsole,
-                        icon: const Icon(Icons.refresh),
-                        label: Text(_controller.detecting ? context.l10n.detecting : 'Rescan ADB'),
-                      ),
-                      const SizedBox(width: 12),
-                      StartButton(onPressed: _controller.running || sessions.isEmpty ? null : _controller.start),
+                      Text(context.l10n.deviceSessions),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -140,29 +135,65 @@ class _AdbStatusPanel extends StatelessWidget {
     final snapshot = controller.adbManager.validationSnapshot;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
+        padding: const EdgeInsets.all(16),
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('ADB', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            _InfoRow(label: 'ADB Path', value: snapshot.path ?? context.l10n.notDiscovered),
-            _InfoRow(label: 'ADB Version', value: snapshot.version ?? context.l10n.unknown),
-            _InfoRow(label: 'ADB Status', value: snapshot.statusLabel),
-            _InfoRow(label: 'Connected Devices', value: snapshot.connectedDevices.toString()),
-            _InfoRow(
-              label: 'Last Validation',
-              value: snapshot.lastValidation == null ? context.l10n.never : snapshot.lastValidation!.toLocal().toString().split('.').first,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Text('ADB Status', style: Theme.of(context).textTheme.titleLarge),
+                      const SizedBox(width: 12),
+                      _StatusBadge(label: snapshot.statusLabel, color: _adbColor(snapshot.status)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _InfoRow(label: 'Version', value: snapshot.version ?? context.l10n.unknown),
+                  _InfoRow(label: 'Connected Devices', value: snapshot.connectedDevices.toString()),
+                  _InfoRow(label: 'Executable Path', value: snapshot.path ?? context.l10n.notDiscovered),
+                  _InfoRow(
+                    label: 'Last Scan',
+                    value: snapshot.lastValidation == null ? context.l10n.never : snapshot.lastValidation!.toLocal().toString().split('.').first,
+                  ),
+                  if (snapshot.message != null) ...<Widget>[
+                    const SizedBox(height: 8),
+                    Text(snapshot.message!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                  ],
+                ],
+              ),
             ),
-            if (snapshot.message != null) ...<Widget>[
-              const SizedBox(height: 8),
-              Text(snapshot.message!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-            ],
+            const SizedBox(width: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              direction: Axis.vertical,
+              children: <Widget>[
+                OutlinedButton.icon(
+                  onPressed: controller.detecting ? null : controller.initializeDesktopConsole,
+                  icon: const Icon(Icons.refresh),
+                  label: Text(controller.detecting ? context.l10n.detecting : 'Rescan ADB'),
+                ),
+                StartButton(onPressed: controller.running || controller.sessions.isEmpty ? null : controller.start),
+                OutlinedButton.icon(onPressed: null, icon: const Icon(Icons.stop), label: const Text('Stop All')),
+                OutlinedButton.icon(onPressed: null, icon: const Icon(Icons.restart_alt), label: const Text('Restart All')),
+              ],
+            ),
           ],
         ),
       ),
     );
   }
+
+  Color _adbColor(AdbRuntimeStatus status) => switch (status) {
+        AdbRuntimeStatus.connected => Colors.green,
+        AdbRuntimeStatus.available => Colors.blue,
+        AdbRuntimeStatus.noDevice => Colors.amber,
+        AdbRuntimeStatus.invalid => Colors.deepOrange,
+        AdbRuntimeStatus.notFound => Colors.red,
+      };
 }
 
 class _EmptyDeviceState extends StatelessWidget {
@@ -262,6 +293,31 @@ class _DeviceCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                OutlinedButton.icon(
+                  onPressed: () => _showAutomationLogicDialog(context),
+                  icon: const Icon(Icons.settings),
+                  label: const Text('設定運行邏輯'),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: () => controller.captureScreenshot(session),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Refresh Screenshot'),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: controller.running ? null : controller.start,
+                  icon: const Icon(Icons.play_arrow),
+                  label: const Text('Start'),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(onPressed: null, icon: const Icon(Icons.stop), label: const Text('Stop')),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: () => controller.restartSession(session),
+                  icon: const Icon(Icons.restart_alt),
+                  label: const Text('Restart'),
+                ),
                 IconButton(
                   tooltip: 'Rename device',
                   onPressed: () => _showRenameDialog(context),
@@ -292,8 +348,17 @@ class _DeviceCard extends StatelessWidget {
                       const SizedBox(height: 12),
                       _RuntimeMonitor(session: session),
                       const SizedBox(height: 12),
-                      _InfoRow(label: 'ADB Status', value: session.device.isOnline ? '🟢 Connected' : '🔴 ${session.device.status.name}'),
-                      _InfoRow(label: 'Screenshot', value: screenshot == null ? '🔴 Capture Failed' : '🟢 Ready'),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: <Widget>[
+                          _StatusBadge(label: 'Task ${session.currentStep}', color: Theme.of(context).colorScheme.primary),
+                          _AutomationStatusBadge(state: session.state),
+                          _StatusBadge(label: session.device.isOnline ? 'ADB Connected' : 'ADB ${session.device.status.name}', color: session.device.isOnline ? Colors.green : Colors.red),
+                          _StatusBadge(label: screenshot == null ? 'Screenshot Missing' : 'Screenshot Ready', color: screenshot == null ? Colors.red : Colors.green),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
                       _InfoRow(label: 'Last Capture', value: screenshot == null ? context.l10n.never : screenshot.updatedAt.toLocal().toString().split(' ').last.split('.').first),
                       _InfoRow(label: 'Image Size', value: screenshot?.sizeLabel ?? 'Unknown'),
                       const SizedBox(height: 12),
@@ -375,6 +440,34 @@ class _DeviceCard extends StatelessWidget {
                               ),
                             const SizedBox(height: 8),
                           ],
+                          Text('Priority', style: Theme.of(context).textTheme.titleMedium),
+                          const Divider(),
+                          for (final actionId in draft.priorityOrder)
+                            if (actions.any((AutomationActionDefinition action) => action.id == actionId))
+                              ListTile(
+                                dense: true,
+                                contentPadding: EdgeInsets.zero,
+                                leading: CircleAvatar(radius: 12, child: Text('${draft.priorityOrder.indexOf(actionId) + 1}')),
+                                title: Text(actions.firstWhere((AutomationActionDefinition action) => action.id == actionId).displayName),
+                                trailing: Wrap(
+                                  children: <Widget>[
+                                    IconButton(
+                                      tooltip: 'Move up',
+                                      onPressed: draft.priorityOrder.indexOf(actionId) == 0
+                                          ? null
+                                          : () => setDialogState(() => draft = draft.reorder(actionId, draft.priorityOrder.indexOf(actionId) - 1)),
+                                      icon: const Icon(Icons.arrow_upward),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'Move down',
+                                      onPressed: draft.priorityOrder.indexOf(actionId) == draft.priorityOrder.length - 1
+                                          ? null
+                                          : () => setDialogState(() => draft = draft.reorder(actionId, draft.priorityOrder.indexOf(actionId) + 1)),
+                                      icon: const Icon(Icons.arrow_downward),
+                                    ),
+                                  ],
+                                ),
+                              ),
                         ],
                       ),
                     ),
@@ -610,6 +703,43 @@ class _StatusRow extends StatelessWidget {
   }
 }
 
+class _AutomationStatusBadge extends StatelessWidget {
+  const _AutomationStatusBadge({required this.state});
+
+  final AutomationState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final (String label, Color color) = switch (state) {
+      AutomationState.idle => ('Automation Idle', Colors.grey),
+      AutomationState.running => ('Automation Running', Colors.green),
+      AutomationState.paused => ('Automation Paused', Colors.amber),
+      AutomationState.stopped => ('Automation Waiting', Colors.blueGrey),
+      AutomationState.completed => ('Automation Completed', Colors.blue),
+      AutomationState.failed => ('Automation Error', Colors.red),
+    };
+    return _StatusBadge(label: label, color: color);
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Chip(
+      label: Text(label),
+      side: BorderSide(color: color),
+      backgroundColor: color.withOpacity(0.12),
+      labelStyle: TextStyle(color: color, fontWeight: FontWeight.w600),
+      visualDensity: VisualDensity.compact,
+    );
+  }
+}
+
 class _InfoRow extends StatelessWidget {
   const _InfoRow({required this.label, required this.value, this.valueColor});
 
@@ -641,8 +771,8 @@ class _ScreenshotPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 150,
-      height: 220,
+      width: 100,
+      height: 180,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -655,7 +785,41 @@ class _ScreenshotPreview extends StatelessWidget {
               onTap: () => showDialog<void>(
                 context: context,
                 builder: (BuildContext dialogContext) => Dialog(
-                  child: InteractiveViewer(child: Image.memory(screenshot!.pngBytes, fit: BoxFit.contain)),
+                  child: SizedBox(
+                    width: 720,
+                    height: 640,
+                    child: Column(
+                      children: <Widget>[
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            children: <Widget>[
+                              Text('Screenshot Viewer', style: Theme.of(context).textTheme.titleLarge),
+                              const Spacer(),
+                              const Text('Zoom / Original Size'),
+                              IconButton(onPressed: () => Navigator.of(dialogContext).pop(), icon: const Icon(Icons.close)),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: InteractiveViewer(
+                            minScale: 0.25,
+                            maxScale: 6,
+                            child: Center(child: Image.memory(screenshot!.pngBytes, fit: BoxFit.contain)),
+                          ),
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: <Widget>[
+                              OutlinedButton(onPressed: null, child: Text('Save Screenshot')),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
               child: Stack(
