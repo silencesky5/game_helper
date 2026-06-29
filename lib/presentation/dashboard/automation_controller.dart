@@ -102,6 +102,18 @@ class AutomationController extends ChangeNotifier {
 
   bool debugModeFor(String deviceId) => _debugModeDevices.contains(deviceId);
 
+  List<String> recentEventsFor(String deviceId) {
+    final normalizedDeviceId = deviceId.toLowerCase();
+    return logs
+        .where((String entry) => entry.toLowerCase().contains(normalizedDeviceId) || !entry.contains('('))
+        .toList(growable: false)
+        .reversed
+        .take(20)
+        .toList(growable: false)
+        .reversed
+        .toList(growable: false);
+  }
+
   List<String> get logs {
     final logger = _automationEngine.context.loggerService;
     return logger is DesktopConsoleLogger ? logger.entries : const <String>[];
