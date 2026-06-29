@@ -70,6 +70,13 @@ flutter:
     - config/desktop_console.json
     - config/adb.json
     - assets/templates/
+    - assets/templates/android/
+    - assets/templates/loading/
+    - assets/templates/attendance/
+    - assets/templates/home/
+    - assets/templates/bag/
+    - assets/templates/mail/
+    - assets/templates/shop/
     - assets/vision/
 
   # To add assets to your application, add an assets section, like this:

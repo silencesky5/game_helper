@@ -263,7 +263,11 @@ class AutomationController extends ChangeNotifier {
   /// Detects the current scene with template-level debug information.
   Future<void> detectSceneDebug(AutomationSession session) async {
     await _captureForVision(session);
-    final report = await const ImageDetector().debugScene();
+    final report = await ImageDetector(
+      screenshotRepository: screenshotRepository,
+      deviceId: session.device.id,
+      logger: _automationEngine.context.loggerService,
+    ).debugScene();
     _automationEngine.context.loggerService.log(
       LogLevel.info,
       '[Detect Scene] ${session.device.name}\n$report',
@@ -286,7 +290,11 @@ class AutomationController extends ChangeNotifier {
   /// Detects and displays the current scene for one device.
   Future<void> detectScene(AutomationSession session) async {
     await _captureForVision(session);
-    final scene = await const ImageDetector().detectScene();
+    final scene = await ImageDetector(
+      screenshotRepository: screenshotRepository,
+      deviceId: session.device.id,
+      logger: _automationEngine.context.loggerService,
+    ).detectScene();
     _debugScenes[session.device.id] = scene;
     _replaceSession(session.id, session.copyWith(currentScene: _sceneLabel(scene)));
     _automationEngine.context.loggerService.log(LogLevel.info, '[Automation Debug] Detect Scene ${session.device.name}: ${_sceneLabel(scene)}');

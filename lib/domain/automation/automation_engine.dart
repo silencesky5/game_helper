@@ -1,4 +1,5 @@
 import '../../automation/engine/action_controller.dart' as launch_runtime;
+import '../../automation/engine/image_detector.dart' as launch_runtime;
 import '../../automation/engine/state_manager.dart' as launch_runtime;
 import '../../automation/models/task_context.dart' as launch_runtime;
 import '../../automation/models/task_result.dart' as launch_result;
@@ -6,6 +7,7 @@ import '../../automation/tasks/launch/launch_task.dart';
 import '../../emulator/emulator.dart';
 import '../device/device.dart';
 import '../logger/logger.dart';
+import '../core/result.dart';
 import 'automation_context.dart';
 import 'automation_session.dart';
 import 'automation_state.dart';
@@ -61,8 +63,26 @@ class AutomationEngine {
 
       final taskContext = launch_runtime.TaskContext(
         emulator: Emulator(id: device.id, name: device.name, adbPort: 0),
-        stateManager: launch_runtime.StateManager(),
-        actionController: launch_runtime.ActionController(),
+        stateManager: launch_runtime.StateManager(
+          imageDetector: launch_runtime.ImageDetector(
+            screenshotRepository: context.screenshotRepository,
+            deviceId: device.id,
+            logger: context.loggerService,
+            refreshScreenshot: () async {
+              final result = await context.screenshotService.captureForVision(device);
+              switch (result) {
+                case Success(:final value):
+                  context.screenshotRepository.save(value);
+                  context.loggerService.log(LogLevel.info, '[ADB Screenshot] Success ${value.sizeLabel}');
+                case Failure(:final error):
+                  context.loggerService.log(LogLevel.warning, '[ADB Screenshot] Capture Failed: ${error.message}');
+              }
+            },
+          ),
+        ),
+        actionController: launch_runtime.ActionController(
+          logger: context.loggerService,
+        ),
         log: (String message) {
           context.loggerService.log(LogLevel.info, message);
           final lower = message.toLowerCase();
