@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import '../../domain/automation/automation_action.dart';
 import '../../domain/automation/automation_config.dart';
@@ -267,6 +269,7 @@ class AutomationController extends ChangeNotifier {
       screenshotRepository: screenshotRepository,
       deviceId: session.device.id,
       logger: _automationEngine.context.loggerService,
+      loadAssetBytes: _loadAssetBytes,
     ).debugScene();
     _automationEngine.context.loggerService.log(
       LogLevel.info,
@@ -294,6 +297,7 @@ class AutomationController extends ChangeNotifier {
       screenshotRepository: screenshotRepository,
       deviceId: session.device.id,
       logger: _automationEngine.context.loggerService,
+      loadAssetBytes: _loadAssetBytes,
     ).detectScene();
     _debugScenes[session.device.id] = scene;
     _replaceSession(session.id, session.copyWith(currentScene: _sceneLabel(scene)));
@@ -514,6 +518,11 @@ class AutomationController extends ChangeNotifier {
     }
   }
 
+  static Future<Uint8List> _loadAssetBytes(String assetPath) async {
+    final data = await rootBundle.load(assetPath);
+    return data.buffer.asUint8List();
+  }
+
   static AutomationEngine _createDefaultEngine() {
     final PluginManager pluginManager = PluginManager();
     final WorkflowEngine workflowEngine = WorkflowEngine();
@@ -530,6 +539,7 @@ class AutomationController extends ChangeNotifier {
       visionRepository: visionRepository,
       config: const VisionConfig(),
       logger: loggerService,
+      loadAssetBytes: _loadAssetBytes,
     );
 
     return AutomationEngine(

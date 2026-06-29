@@ -1,12 +1,11 @@
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:flutter/services.dart';
-
 import '../../domain/logger/logger.dart';
 import '../../domain/logger/logger_service.dart';
 import '../../domain/screenshot/device_screenshot.dart';
 import '../../domain/screenshot/screenshot_repository.dart';
+import '../../domain/vision/asset_loader.dart';
 import '../../domain/vision/image_decoder.dart';
 import '../../domain/vision/template_matcher.dart';
 import '../../domain/vision/vision_types.dart';
@@ -89,6 +88,7 @@ class ImageDetector {
     this.templateMatcher = const TemplateMatcher(),
     this.thresholds = const <String, double>{},
     this.refreshScreenshot,
+    this.loadAssetBytes,
   });
 
   final ScreenshotRepository? screenshotRepository;
@@ -98,6 +98,7 @@ class ImageDetector {
   final TemplateMatcher templateMatcher;
   final Map<String, double> thresholds;
   final Future<void> Function()? refreshScreenshot;
+  final AssetBytesLoader? loadAssetBytes;
 
   static final Map<String, TemplateAsset?> _templateCache = <String, TemplateAsset?>{};
   static final Map<String, VisionDetectionResult> _lastDetections = <String, VisionDetectionResult>{};
@@ -226,9 +227,14 @@ class ImageDetector {
   Future<TemplateAsset?> _loadTemplate(String templateId) async {
     if (_templateCache.containsKey(templateId)) return _templateCache[templateId];
     final path = VisionTemplates.assetPath(templateId);
+    final loader = loadAssetBytes;
+    if (loader == null) {
+      _templateCache[templateId] = null;
+      _log(LogLevel.warning, '[Vision] Missing template loader for $path');
+      return null;
+    }
     try {
-      final data = await rootBundle.load(path);
-      final bytes = data.buffer.asUint8List();
+      final bytes = await loader(path);
       final decoded = await imageDecoder.decode(
         ImageBuffer(
           deviceId: 'template:$templateId',
@@ -243,9 +249,9 @@ class ImageDetector {
       );
       _templateCache[templateId] = asset;
       return asset;
-    } on FlutterError catch (error) {
+    } catch (error) {
       _templateCache[templateId] = null;
-      _log(LogLevel.warning, '[Vision] Missing template $path: ${error.message}');
+      _log(LogLevel.warning, '[Vision] Missing template $path: $error');
       return null;
     }
   }

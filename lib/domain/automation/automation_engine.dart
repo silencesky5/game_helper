@@ -68,6 +68,7 @@ class AutomationEngine {
             screenshotRepository: context.screenshotRepository,
             deviceId: device.id,
             logger: context.loggerService,
+            loadAssetBytes: context.visionService.loadAssetBytes,
             refreshScreenshot: () async {
               final result = await context.screenshotService.captureForVision(device);
               switch (result) {
