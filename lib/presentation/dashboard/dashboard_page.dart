@@ -85,12 +85,14 @@ class _DashboardPageState extends State<DashboardPage> {
                       OutlinedButton.icon(
                         onPressed: _controller.detecting ? null : _controller.initializeDesktopConsole,
                         icon: const Icon(Icons.refresh),
-                        label: Text(_controller.detecting ? context.l10n.detecting : context.l10n.detectDevices),
+                        label: Text(_controller.detecting ? context.l10n.detecting : 'Rescan ADB'),
                       ),
                       const SizedBox(width: 12),
                       StartButton(onPressed: _controller.running || sessions.isEmpty ? null : _controller.start),
                     ],
                   ),
+                  const SizedBox(height: 12),
+                  _AdbStatusPanel(controller: _controller),
                   const SizedBox(height: 16),
                   Expanded(
                     flex: 3,
@@ -125,6 +127,41 @@ class _DashboardPageState extends State<DashboardPage> {
     } else if (index == 4) {
       Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => SettingsPage(controller: _controller, languageManager: widget.languageManager)));
     }
+  }
+}
+
+class _AdbStatusPanel extends StatelessWidget {
+  const _AdbStatusPanel({required this.controller});
+
+  final AutomationController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final snapshot = controller.adbManager.validationSnapshot;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text('ADB', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            _InfoRow(label: 'ADB Path', value: snapshot.path ?? context.l10n.notDiscovered),
+            _InfoRow(label: 'ADB Version', value: snapshot.version ?? context.l10n.unknown),
+            _InfoRow(label: 'ADB Status', value: snapshot.statusLabel),
+            _InfoRow(label: 'Connected Devices', value: snapshot.connectedDevices.toString()),
+            _InfoRow(
+              label: 'Last Validation',
+              value: snapshot.lastValidation == null ? context.l10n.never : snapshot.lastValidation!.toLocal().toString().split('.').first,
+            ),
+            if (snapshot.message != null) ...<Widget>[
+              const SizedBox(height: 8),
+              Text(snapshot.message!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
 
