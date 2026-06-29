@@ -113,7 +113,10 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   void _onControllerChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   void _openNavigationDestination(BuildContext context, int index) {
@@ -133,6 +136,8 @@ class _AdbStatusPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final snapshot = controller.adbManager.validationSnapshot;
+    final DateTime? lastValidation = snapshot.lastValidation;
+    final String? message = snapshot.message;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -156,11 +161,11 @@ class _AdbStatusPanel extends StatelessWidget {
                   _InfoRow(label: 'Executable Path', value: snapshot.path ?? context.l10n.notDiscovered),
                   _InfoRow(
                     label: 'Last Scan',
-                    value: snapshot.lastValidation == null ? context.l10n.never : snapshot.lastValidation!.toLocal().toString().split('.').first,
+                    value: lastValidation == null ? context.l10n.never : lastValidation.toLocal().toString().split('.').first,
                   ),
-                  if (snapshot.message != null) ...<Widget>[
+                  if (message != null) ...<Widget>[
                     const SizedBox(height: 8),
-                    Text(snapshot.message!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                    Text(message, style: TextStyle(color: Theme.of(context).colorScheme.error)),
                   ],
                 ],
               ),
@@ -304,23 +309,18 @@ class _DeviceCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            _ResponsiveCardRow(
               children: <Widget>[
-                Expanded(flex: 2, child: _RuntimeMonitor(session: session)),
-                const SizedBox(width: 16),
-                Expanded(child: _AutomationProgress(session: session, actions: controller.automationActionsFor(session))),
-                const SizedBox(width: 16),
+                _RuntimeMonitor(session: session),
+                _AutomationProgress(session: session, actions: controller.automationActionsFor(session)),
                 _ScreenshotSection(screenshot: screenshot, onRefresh: () => controller.captureScreenshot(session)),
               ],
             ),
             const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            _ResponsiveCardRow(
               children: <Widget>[
-                Expanded(child: _RuntimeErrorPanel(session: session)),
-                const SizedBox(width: 16),
-                Expanded(child: _RuntimeTimeline(events: controller.recentEventsFor(session.device.id))),
+                _RuntimeErrorPanel(session: session),
+                _RuntimeTimeline(events: controller.recentEventsFor(session.device.id)),
               ],
             ),
             const SizedBox(height: 12),
@@ -576,7 +576,8 @@ class _RuntimeMonitor extends StatelessWidget {
     if (session.startedAt == null && session.state == AutomationState.idle) {
       return const _SectionCard(title: 'Runtime', child: Text('Automation has not started.\nPress Start Automation to begin.'));
     }
-    final runtime = session.startedAt == null ? '00:00:00' : DateTime.now().difference(session.startedAt!).toString().split('.').first;
+    final DateTime? startedAt = session.startedAt;
+    final runtime = startedAt == null ? '--' : DateTime.now().difference(startedAt).toString().split('.').first;
     return _SectionCard(
       title: 'Runtime',
       trailing: _AutomationStatusBadge(state: session.state),
@@ -584,9 +585,9 @@ class _RuntimeMonitor extends StatelessWidget {
         spacing: 12,
         runSpacing: 12,
         children: <Widget>[
-          _RuntimeInfoBlock(label: 'Current Task', value: session.currentStep),
-          _RuntimeInfoBlock(label: 'Next Task', value: session.nextStep),
-          _RuntimeInfoBlock(label: 'Current Scene', value: session.currentScene),
+          _RuntimeInfoBlock(label: 'Current Task', value: _fallbackText(session.currentStep, 'No Active Task')),
+          _RuntimeInfoBlock(label: 'Next Task', value: _fallbackText(session.nextStep, 'No Active Task')),
+          _RuntimeInfoBlock(label: 'Current Scene', value: _fallbackText(session.currentScene, 'Unknown')),
           _RuntimeInfoBlock(label: 'Elapsed Time', value: runtime),
         ],
       ),
@@ -653,12 +654,18 @@ class _AutomationProgress extends StatelessWidget {
   }
 }
 
+String _fallbackText(String value, String fallback) => value.trim().isEmpty ? fallback : value;
+
 class _ScreenshotSection extends StatelessWidget {
   const _ScreenshotSection({required this.screenshot, required this.onRefresh});
   final DeviceScreenshot? screenshot;
   final VoidCallback onRefresh;
   void _openViewer(BuildContext context) {
-    if (screenshot == null) return;
+    final DeviceScreenshot? validScreenshot = _validScreenshotOrNull(screenshot);
+    if (validScreenshot == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to load screenshot.')));
+      return;
+    }
     showDialog<void>(
       context: context,
       builder: (BuildContext dialogContext) => Dialog(
@@ -677,7 +684,7 @@ class _ScreenshotSection extends StatelessWidget {
                   ],
                 ),
               ),
-              Expanded(child: InteractiveViewer(minScale: 0.25, maxScale: 6, child: Center(child: Image.memory(screenshot!.pngBytes, fit: BoxFit.contain)))),
+              Expanded(child: InteractiveViewer(minScale: 0.25, maxScale: 6, child: Center(child: Image.memory(validScreenshot.pngBytes, fit: BoxFit.contain, errorBuilder: _imageErrorBuilder)))),
             ],
           ),
         ),
@@ -687,7 +694,8 @@ class _ScreenshotSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final time = screenshot == null ? context.l10n.never : screenshot!.updatedAt.toLocal().toString().split(' ').last.split('.').first;
+    final DeviceScreenshot? validScreenshot = _validScreenshotOrNull(screenshot);
+    final time = validScreenshot == null ? context.l10n.never : validScreenshot.updatedAt.toLocal().toString().split(' ').last.split('.').first;
     return _SectionCard(
       title: 'Screenshot',
       trailing: Text(time, style: Theme.of(context).textTheme.bodySmall),
@@ -696,10 +704,69 @@ class _ScreenshotSection extends StatelessWidget {
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 8, children: <Widget>[
           OutlinedButton(onPressed: onRefresh, child: const Text('Refresh')),
-          OutlinedButton(onPressed: screenshot == null ? null : () => _openViewer(context), child: const Text('Open Viewer')),
+          OutlinedButton(onPressed: validScreenshot == null ? null : () => _openViewer(context), child: const Text('Open Viewer')),
           const OutlinedButton(onPressed: null, child: Text('Save')),
         ]),
       ]),
+    );
+  }
+}
+
+
+class _ResponsiveCardRow extends StatelessWidget {
+  const _ResponsiveCardRow({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final bool stacked = constraints.maxWidth < 900;
+        final double spacing = 16;
+        final double itemWidth = stacked ? constraints.maxWidth : (constraints.maxWidth - spacing * (children.length - 1)) / children.length;
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: children.map((Widget child) => SizedBox(width: itemWidth.clamp(260.0, constraints.maxWidth).toDouble(), child: child)).toList(growable: false),
+        );
+      },
+    );
+  }
+}
+
+DeviceScreenshot? _validScreenshotOrNull(DeviceScreenshot? screenshot) {
+  if (screenshot == null) return null;
+  final bytes = screenshot.pngBytes;
+  if (bytes.length < 8) return null;
+  const List<int> pngSignature = <int>[137, 80, 78, 71, 13, 10, 26, 10];
+  for (var i = 0; i < pngSignature.length; i += 1) {
+    if (bytes[i] != pngSignature[i]) return null;
+  }
+  return screenshot;
+}
+
+Widget _imageErrorBuilder(BuildContext context, Object error, StackTrace? stackTrace) => const _ScreenshotPlaceholder(label: 'Screenshot Failed');
+
+class _ScreenshotPlaceholder extends StatelessWidget {
+  const _ScreenshotPlaceholder({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(Icons.image_not_supported_outlined, color: Theme.of(context).colorScheme.onSurfaceVariant),
+            const SizedBox(height: 8),
+            Text(label, textAlign: TextAlign.center),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -754,16 +821,19 @@ class _SectionCard extends StatelessWidget {
   final Widget child;
   final Widget? trailing;
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) {
+    final Widget? trailingWidget = trailing;
+    return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(border: Border.all(color: Theme.of(context).dividerColor), borderRadius: BorderRadius.circular(12)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-          Row(children: <Widget>[Text(title, style: Theme.of(context).textTheme.titleMedium), const Spacer(), if (trailing != null) trailing!]),
+          Row(children: <Widget>[Text(title, style: Theme.of(context).textTheme.titleMedium), const Spacer(), if (trailingWidget != null) trailingWidget]),
           const SizedBox(height: 10),
           child,
         ]),
       );
+  }
 }
 
 class _AutomationDebugPanel extends StatefulWidget {
@@ -981,6 +1051,7 @@ class _ScreenshotPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final DeviceScreenshot? validScreenshot = _validScreenshotOrNull(screenshot);
     return Container(
       width: 100,
       height: 180,
@@ -990,15 +1061,14 @@ class _ScreenshotPreview extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Theme.of(context).dividerColor),
       ),
-      child: screenshot == null
-          ? Center(child: Text(context.l10n.noScreenshot))
+      child: validScreenshot == null
+          ? const _ScreenshotPlaceholder(label: 'No Screenshot Available')
           : InkWell(
               onTap: () => showDialog<void>(
                 context: context,
                 builder: (BuildContext dialogContext) => Dialog(
-                  child: SizedBox(
-                    width: 720,
-                    height: 640,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 720, maxHeight: 640),
                     child: Column(
                       children: <Widget>[
                         Padding(
@@ -1016,7 +1086,7 @@ class _ScreenshotPreview extends StatelessWidget {
                           child: InteractiveViewer(
                             minScale: 0.25,
                             maxScale: 6,
-                            child: Center(child: Image.memory(screenshot!.pngBytes, fit: BoxFit.contain)),
+                            child: Center(child: Image.memory(validScreenshot.pngBytes, fit: BoxFit.contain, errorBuilder: _imageErrorBuilder)),
                           ),
                         ),
                         const Padding(
@@ -1033,12 +1103,7 @@ class _ScreenshotPreview extends StatelessWidget {
                   ),
                 ),
               ),
-              child: Stack(
-                fit: StackFit.expand,
-                children: <Widget>[
-                  Image.memory(screenshot!.pngBytes, fit: BoxFit.cover, gaplessPlayback: true),
-                ],
-              ),
+              child: Image.memory(validScreenshot.pngBytes, fit: BoxFit.cover, gaplessPlayback: true, errorBuilder: _imageErrorBuilder),
             ),
     );
   }
