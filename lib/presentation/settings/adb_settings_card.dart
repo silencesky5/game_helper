@@ -22,9 +22,12 @@ class ADBSettingsCard extends StatelessWidget {
           children: <Widget>[
             Text(context.l10n.adbSettings, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
-            Text(context.l10n.adbPath(adbManager.adbPath ?? context.l10n.notDiscovered)),
-            Text(context.l10n.adbVersion(adbManager.adbVersion ?? context.l10n.unknown)),
-            Text(context.l10n.connectionStatus(adbManager.connectionStatus)),
+            Text(context.l10n.adbPath(adbManager.validationSnapshot.path ?? context.l10n.notDiscovered)),
+            Text(context.l10n.adbVersion(adbManager.validationSnapshot.version ?? context.l10n.unknown)),
+            Text(context.l10n.connectionStatus(adbManager.validationSnapshot.statusLabel)),
+            Text('Connected Devices: ${adbManager.validationSnapshot.connectedDevices}'),
+            Text('Last Validation: ${_lastValidationLabel(context, adbManager.validationSnapshot.lastValidation)}'),
+            if (adbManager.validationSnapshot.message != null) Text(adbManager.validationSnapshot.message!),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -50,6 +53,11 @@ class ADBSettingsCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _lastValidationLabel(BuildContext context, DateTime? value) {
+    if (value == null) return context.l10n.never;
+    return value.toLocal().toString().split('.').first;
   }
 
   Future<void> _showADBPathDialog(BuildContext context) async {

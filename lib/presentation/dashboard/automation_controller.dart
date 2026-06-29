@@ -13,6 +13,7 @@ import '../../domain/automation/automation_session.dart';
 import '../../domain/automation/session_manager.dart';
 import '../../domain/decision/decision_config.dart';
 import '../../domain/decision/decision_state.dart';
+import '../../domain/device/device.dart';
 import '../../domain/device/device_manager.dart';
 import '../../domain/perception/perception_config.dart';
 import '../../domain/perception/perception_repository.dart';
@@ -114,8 +115,8 @@ class AutomationController extends ChangeNotifier {
       final context = _automationEngine.context;
       context.loggerService.log(LogLevel.info, 'Desktop Console → Automation Engine → ADB Device Detection');
       await adbManager.locateADB();
-      await adbManager.validateADB();
-      final devices = await context.deviceManager.detectDevices();
+      await adbManager.validateConnection();
+      final devices = adbManager.validationSnapshot.automationReady ? await context.deviceManager.detectDevices() : const <Device>[];
       context.sessionManager.clear();
       if (context.pluginManager.plugins.isEmpty) {
         await context.pluginManager.initialize();
@@ -162,13 +163,22 @@ class AutomationController extends ChangeNotifier {
 
   /// Starts the Mine Journey automation pipeline.
   Future<void> start() async {
+    final adbReady = await adbManager.validateConnection();
+    if (!adbReady) {
+      final reason = adbManager.isAvailable ? 'No device connected' : 'ADB unavailable';
+      _automationEngine.context.loggerService.log(
+        LogLevel.warning,
+        'Automation Blocked\nReason:\n$reason',
+      );
+      return;
+    }
     if (_sessions.isEmpty) {
       await initializeDesktopConsole();
     }
     if (_sessions.isEmpty) {
       _automationEngine.context.loggerService.log(
         LogLevel.warning,
-        'Automation start blocked: no connected ADB devices detected.',
+        'Automation Blocked\nReason:\nNo device connected',
       );
       return;
     }
@@ -213,7 +223,7 @@ class AutomationController extends ChangeNotifier {
   }
 
   Future<void> testADBConnection() async {
-    await adbManager.validateADB();
+    await adbManager.validateConnection();
     notifyListeners();
   }
 
