@@ -277,97 +277,56 @@ class _DeviceCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            _EmulatorSessionHeader(
+              session: session,
+              gameName: pluginName,
+              pluginVersion: pluginVersion,
+              characterLabel: '${session.character.displayName}$characterLevel',
+              onRename: () => _showRenameDialog(context),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: session.plugin?.id ?? 'unassigned',
+              decoration: const InputDecoration(labelText: '遊戲', isDense: true),
+              items: controller.availablePlugins.map((plugin) => DropdownMenuItem<String>(value: plugin.id, child: Text(plugin.displayName))).toList(growable: false),
+              onChanged: (String? pluginId) {
+                if (pluginId != null) controller.assignPlugin(session, pluginId);
+              },
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: <Widget>[
-                Icon(Icons.phone_android, color: Theme.of(context).colorScheme.primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(session.device.name, style: Theme.of(context).textTheme.titleLarge),
-                      const SizedBox(height: 4),
-                      Text('$pluginName  v$pluginVersion', style: Theme.of(context).textTheme.titleMedium),
-                      Text('角色：${session.character.displayName}$characterLevel'),
-                    ],
-                  ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => _showAutomationLogicDialog(context),
-                  icon: const Icon(Icons.settings),
-                  label: const Text('設定運行邏輯'),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed: () => controller.captureScreenshot(session),
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Refresh Screenshot'),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed: controller.running ? null : controller.start,
-                  icon: const Icon(Icons.play_arrow),
-                  label: const Text('Start'),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton.icon(onPressed: null, icon: const Icon(Icons.stop), label: const Text('Stop')),
-                const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed: () => controller.restartSession(session),
-                  icon: const Icon(Icons.restart_alt),
-                  label: const Text('Restart'),
-                ),
-                IconButton(
-                  tooltip: 'Rename device',
-                  onPressed: () => _showRenameDialog(context),
-                  icon: const Icon(Icons.edit_outlined),
-                ),
+                _AutomationStatusBadge(state: session.state),
+                _StatusBadge(label: session.device.isOnline ? 'ADB Connected' : 'ADB ${session.device.status.name}', color: session.device.isOnline ? RuntimeStateColors.running : RuntimeStateColors.error),
+                _StatusBadge(label: screenshot == null ? 'Screenshot Missing' : 'Screenshot Ready', color: screenshot == null ? RuntimeStateColors.error : RuntimeStateColors.running),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                _ScreenshotPreview(screenshot: screenshot),
+                Expanded(flex: 2, child: _RuntimeMonitor(session: session)),
                 const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      DropdownButtonFormField<String>(
-                        value: session.plugin?.id ?? 'unassigned',
-                        decoration: const InputDecoration(labelText: '遊戲', isDense: true),
-                        items: controller.availablePlugins
-                            .map((plugin) => DropdownMenuItem<String>(value: plugin.id, child: Text(plugin.displayName)))
-                            .toList(growable: false),
-                        onChanged: (String? pluginId) {
-                          if (pluginId != null) controller.assignPlugin(session, pluginId);
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      _RuntimeMonitor(session: session),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: <Widget>[
-                          _StatusBadge(label: 'Task ${session.currentStep}', color: Theme.of(context).colorScheme.primary),
-                          _AutomationStatusBadge(state: session.state),
-                          _StatusBadge(label: session.device.isOnline ? 'ADB Connected' : 'ADB ${session.device.status.name}', color: session.device.isOnline ? Colors.green : Colors.red),
-                          _StatusBadge(label: screenshot == null ? 'Screenshot Missing' : 'Screenshot Ready', color: screenshot == null ? Colors.red : Colors.green),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      _InfoRow(label: 'Last Capture', value: screenshot == null ? context.l10n.never : screenshot.updatedAt.toLocal().toString().split(' ').last.split('.').first),
-                      _InfoRow(label: 'Image Size', value: screenshot?.sizeLabel ?? 'Unknown'),
-                      const SizedBox(height: 12),
-                      _AutomationDebugPanel(session: session, controller: controller),
-                    ],
-                  ),
-                ),
+                Expanded(child: _AutomationProgress(session: session, actions: controller.automationActionsFor(session))),
+                const SizedBox(width: 16),
+                _ScreenshotSection(screenshot: screenshot, onRefresh: () => controller.captureScreenshot(session)),
               ],
             ),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Expanded(child: _RuntimeErrorPanel(session: session)),
+                const SizedBox(width: 16),
+                Expanded(child: _RuntimeTimeline(events: controller.recentEventsFor(session.device.id))),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _AutomationDebugPanel(session: session, controller: controller),
+            const SizedBox(height: 12),
+            const _ReservedRuntimeSections(),
             const SizedBox(height: 12),
             _ActionGroups(
               session: session,
@@ -545,6 +504,68 @@ class _DeviceCard extends StatelessWidget {
   }
 }
 
+
+class RuntimeStateColors {
+  static const Color idle = Colors.grey;
+  static const Color running = Colors.green;
+  static const Color waiting = Colors.blue;
+  static const Color paused = Colors.orange;
+  static const Color completed = Colors.cyan;
+  static const Color error = Colors.red;
+}
+
+class _EmulatorSessionHeader extends StatelessWidget {
+  const _EmulatorSessionHeader({required this.session, required this.gameName, required this.pluginVersion, required this.characterLabel, required this.onRename});
+
+  final AutomationSession session;
+  final String gameName;
+  final String pluginVersion;
+  final String characterLabel;
+  final VoidCallback onRename;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.45),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(Icons.phone_android, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(session.device.name, style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 4),
+                Text('$gameName  v$pluginVersion', style: Theme.of(context).textTheme.titleMedium),
+                Text('角色：$characterLabel'),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  children: <Widget>[
+                    Text('Device ID: ${session.device.id}', style: Theme.of(context).textTheme.bodySmall),
+                    Text('Resolution: ${session.device.resolution}', style: Theme.of(context).textTheme.bodySmall),
+                    Text('Android: ${session.device.androidVersion}', style: Theme.of(context).textTheme.bodySmall),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          IconButton(tooltip: 'Rename device', onPressed: onRename, icon: const Icon(Icons.edit_outlined)),
+        ],
+      ),
+    );
+  }
+}
+
 class _RuntimeMonitor extends StatelessWidget {
   const _RuntimeMonitor({required this.session});
 
@@ -552,32 +573,216 @@ class _RuntimeMonitor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (session.startedAt == null && session.state == AutomationState.idle) {
+      return const _SectionCard(title: 'Runtime', child: Text('Automation has not started.\nPress Start Automation to begin.'));
+    }
     final runtime = session.startedAt == null ? '00:00:00' : DateTime.now().difference(session.startedAt!).toString().split('.').first;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text('Runtime', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 4),
-        _InfoRow(label: '目前任務', value: session.currentStep),
-        _InfoRow(label: '下一步', value: session.nextStep),
-        _InfoRow(label: '目前 Scene', value: session.currentScene),
-        _InfoRow(label: '執行時間', value: runtime),
-        _StatusRow(state: session.state),
-        _InfoRow(label: '錯誤', value: context.l10n.none),
-      ],
+    return _SectionCard(
+      title: 'Runtime',
+      trailing: _AutomationStatusBadge(state: session.state),
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: <Widget>[
+          _RuntimeInfoBlock(label: 'Current Task', value: session.currentStep),
+          _RuntimeInfoBlock(label: 'Next Task', value: session.nextStep),
+          _RuntimeInfoBlock(label: 'Current Scene', value: session.currentScene),
+          _RuntimeInfoBlock(label: 'Elapsed Time', value: runtime),
+        ],
+      ),
     );
   }
 }
 
+class _RuntimeInfoBlock extends StatelessWidget {
+  const _RuntimeInfoBlock({required this.label, required this.value});
+  final String label;
+  final String value;
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: 150,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+          Text(label, style: Theme.of(context).textTheme.labelMedium),
+          const SizedBox(height: 4),
+          Text(value, style: Theme.of(context).textTheme.titleSmall),
+        ]),
+      );
+}
 
-class _AutomationDebugPanel extends StatelessWidget {
+class _RuntimeErrorPanel extends StatelessWidget {
+  const _RuntimeErrorPanel({required this.session});
+  final AutomationSession session;
+  @override
+  Widget build(BuildContext context) {
+    if (session.state != AutomationState.failed) {
+      return const _SectionCard(title: 'Automation Error', child: Text('No Runtime Errors'));
+    }
+    final timestamp = DateTime.now().toLocal().toString().split(' ').last.split('.').first;
+    return _SectionCard(
+      title: 'Automation Error',
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+        Text(session.currentStep, style: Theme.of(context).textTheme.titleSmall?.copyWith(color: RuntimeStateColors.error)),
+        const SizedBox(height: 8),
+        const _InfoRow(label: 'Reason', value: 'Runtime reported failure'),
+        const _InfoRow(label: 'Retry Count', value: 'N/A'),
+        _InfoRow(label: 'Last Action', value: session.currentStep),
+        _InfoRow(label: 'Timestamp', value: timestamp),
+      ]),
+    );
+  }
+}
+
+class _AutomationProgress extends StatelessWidget {
+  const _AutomationProgress({required this.session, required this.actions});
+  final AutomationSession session;
+  final List<AutomationActionDefinition> actions;
+  @override
+  Widget build(BuildContext context) {
+    final total = actions.isEmpty ? 10 : actions.length;
+    final completed = session.state == AutomationState.completed ? total : 0;
+    final value = total == 0 ? 0.0 : completed / total;
+    return _SectionCard(
+      title: "Today's Progress",
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+        LinearProgressIndicator(value: value, minHeight: 10),
+        const SizedBox(height: 8),
+        Text('$completed / $total Tasks'),
+        Text('${(value * 100).round()}%'),
+      ]),
+    );
+  }
+}
+
+class _ScreenshotSection extends StatelessWidget {
+  const _ScreenshotSection({required this.screenshot, required this.onRefresh});
+  final DeviceScreenshot? screenshot;
+  final VoidCallback onRefresh;
+  void _openViewer(BuildContext context) {
+    if (screenshot == null) return;
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) => Dialog(
+        child: SizedBox(
+          width: 720,
+          height: 640,
+          child: Column(
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: <Widget>[
+                    Text('Screenshot Viewer', style: Theme.of(context).textTheme.titleLarge),
+                    const Spacer(),
+                    IconButton(onPressed: () => Navigator.of(dialogContext).pop(), icon: const Icon(Icons.close)),
+                  ],
+                ),
+              ),
+              Expanded(child: InteractiveViewer(minScale: 0.25, maxScale: 6, child: Center(child: Image.memory(screenshot!.pngBytes, fit: BoxFit.contain)))),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final time = screenshot == null ? context.l10n.never : screenshot!.updatedAt.toLocal().toString().split(' ').last.split('.').first;
+    return _SectionCard(
+      title: 'Screenshot',
+      trailing: Text(time, style: Theme.of(context).textTheme.bodySmall),
+      child: Column(children: <Widget>[
+        _ScreenshotPreview(screenshot: screenshot),
+        const SizedBox(height: 8),
+        Wrap(spacing: 8, runSpacing: 8, children: <Widget>[
+          OutlinedButton(onPressed: onRefresh, child: const Text('Refresh')),
+          OutlinedButton(onPressed: screenshot == null ? null : () => _openViewer(context), child: const Text('Open Viewer')),
+          const OutlinedButton(onPressed: null, child: Text('Save')),
+        ]),
+      ]),
+    );
+  }
+}
+
+class _RuntimeTimeline extends StatelessWidget {
+  const _RuntimeTimeline({required this.events});
+  final List<String> events;
+  @override
+  Widget build(BuildContext context) => _SectionCard(
+        title: 'Recent Events',
+        child: events.isEmpty
+            ? const Text('No recent events')
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: events.take(20).map((String event) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text(event, maxLines: 2, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall),
+                    )).toList(growable: false),
+              ),
+      );
+}
+
+class _ReservedRuntimeSections extends StatelessWidget {
+  const _ReservedRuntimeSections();
+  @override
+  Widget build(BuildContext context) => Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: const <Widget>[
+          _PlaceholderExpansion(title: 'Performance'),
+          _PlaceholderExpansion(title: 'OCR'),
+          _PlaceholderExpansion(title: 'Memory'),
+          _PlaceholderExpansion(title: 'Plugin Status'),
+          _PlaceholderExpansion(title: 'Statistics'),
+        ],
+      );
+}
+
+class _PlaceholderExpansion extends StatelessWidget {
+  const _PlaceholderExpansion({required this.title});
+  final String title;
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: 220,
+        child: ExpansionTile(title: Text(title), initiallyExpanded: false, children: const <Widget>[Padding(padding: EdgeInsets.all(8), child: Text('Reserved for future platform diagnostics.'))]),
+      );
+}
+
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({required this.title, required this.child, this.trailing});
+  final String title;
+  final Widget child;
+  final Widget? trailing;
+  @override
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(border: Border.all(color: Theme.of(context).dividerColor), borderRadius: BorderRadius.circular(12)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
+          Row(children: <Widget>[Text(title, style: Theme.of(context).textTheme.titleMedium), const Spacer(), if (trailing != null) trailing!]),
+          const SizedBox(height: 10),
+          child,
+        ]),
+      );
+}
+
+class _AutomationDebugPanel extends StatefulWidget {
   const _AutomationDebugPanel({required this.session, required this.controller});
 
   final AutomationSession session;
   final AutomationController controller;
 
   @override
+  State<_AutomationDebugPanel> createState() => _AutomationDebugPanelState();
+}
+
+class _AutomationDebugPanelState extends State<_AutomationDebugPanel> {
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
+    final session = widget.session;
+    final controller = widget.controller;
     final GrowStoneDebugResult? growStone = controller.growStoneDebugFor(session.device.id);
     final String scene = controller.debugSceneFor(session.device.id)?.name ?? session.currentScene;
     final rect = growStone?.rect;
@@ -592,19 +797,24 @@ class _AutomationDebugPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              Text('Automation Debug', style: Theme.of(context).textTheme.titleMedium),
-              const Spacer(),
-              const Text('Debug Mode'),
-              Switch(
-                value: controller.debugModeFor(session.device.id),
-                onChanged: (bool value) => controller.toggleDebugMode(session, value),
-              ),
-            ],
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Row(
+              children: <Widget>[
+                Icon(_expanded ? Icons.expand_more : Icons.chevron_right),
+                Text('Automation Debug', style: Theme.of(context).textTheme.titleMedium),
+                const Spacer(),
+                const Text('Debug Mode'),
+                Switch(
+                  value: controller.debugModeFor(session.device.id),
+                  onChanged: (bool value) => controller.toggleDebugMode(session, value),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 8),
-          Wrap(
+          if (_expanded) ...<Widget>[
+            const SizedBox(height: 8),
+            Wrap(
             spacing: 8,
             runSpacing: 8,
             children: <Widget>[
@@ -621,7 +831,8 @@ class _AutomationDebugPanel extends StatelessWidget {
           _InfoRow(label: 'Left', value: rect?.left.toStringAsFixed(0) ?? 'N/A'),
           _InfoRow(label: 'Top', value: rect?.top.toStringAsFixed(0) ?? 'N/A'),
           _InfoRow(label: 'Right', value: rect?.right.toStringAsFixed(0) ?? 'N/A'),
-          _InfoRow(label: 'Bottom', value: rect?.bottom.toStringAsFixed(0) ?? 'N/A'),
+            _InfoRow(label: 'Bottom', value: rect?.bottom.toStringAsFixed(0) ?? 'N/A'),
+          ],
         ],
       ),
     );
@@ -692,12 +903,12 @@ class _StatusRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (String label, Color color) = switch (state) {
-      AutomationState.running => ('🟢 Running', Colors.green),
-      AutomationState.paused => ('🟡 Waiting', Colors.amber),
-      AutomationState.completed => ('🔵 Success', Colors.blue),
-      AutomationState.failed => ('🔴 Error', Colors.red),
-      AutomationState.stopped => ('⚫ Offline', Colors.grey),
-      AutomationState.idle => ('🟡 Waiting', Colors.amber),
+      AutomationState.running => ('Running', RuntimeStateColors.running),
+      AutomationState.paused => ('Paused', RuntimeStateColors.paused),
+      AutomationState.completed => ('Completed', RuntimeStateColors.completed),
+      AutomationState.failed => ('Error', RuntimeStateColors.error),
+      AutomationState.stopped => ('Waiting', RuntimeStateColors.waiting),
+      AutomationState.idle => ('Idle', RuntimeStateColors.idle),
     };
     return _InfoRow(label: '目前狀態', value: label, valueColor: color);
   }
@@ -711,12 +922,12 @@ class _AutomationStatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (String label, Color color) = switch (state) {
-      AutomationState.idle => ('Automation Idle', Colors.grey),
-      AutomationState.running => ('Automation Running', Colors.green),
-      AutomationState.paused => ('Automation Paused', Colors.amber),
-      AutomationState.stopped => ('Automation Waiting', Colors.blueGrey),
-      AutomationState.completed => ('Automation Completed', Colors.blue),
-      AutomationState.failed => ('Automation Error', Colors.red),
+      AutomationState.failed => ('Automation Error', RuntimeStateColors.error),
+      AutomationState.paused => ('Automation Paused', RuntimeStateColors.paused),
+      AutomationState.running => ('Automation Running', RuntimeStateColors.running),
+      AutomationState.stopped => ('Automation Waiting', RuntimeStateColors.waiting),
+      AutomationState.completed => ('Automation Completed', RuntimeStateColors.completed),
+      AutomationState.idle => ('Automation Idle', RuntimeStateColors.idle),
     };
     return _StatusBadge(label: label, color: color);
   }
