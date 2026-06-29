@@ -9,6 +9,7 @@ import '../../infrastructure/adb/adb_manager.dart';
 import '../../app/localization/l10n_extension.dart';
 import '../../app/localization/language_manager.dart';
 import 'automation_controller.dart';
+import 'dashboard_strings.dart';
 import '../plugins/plugins_page.dart';
 import '../settings/settings_page.dart';
 import 'widgets/start_button.dart';
@@ -67,8 +68,8 @@ class _DashboardPageState extends State<DashboardPage> {
             destinations: <NavigationRailDestination>[
               NavigationRailDestination(icon: Icon(Icons.dashboard), label: Text(context.l10n.dashboard)),
               NavigationRailDestination(icon: Icon(Icons.extension), label: Text(context.l10n.plugins)),
-              const NavigationRailDestination(icon: Icon(Icons.bar_chart), label: Text('Statistics')),
-              const NavigationRailDestination(icon: Icon(Icons.article), label: Text('Logs')),
+              const NavigationRailDestination(icon: Icon(Icons.bar_chart), label: Text(DashboardStrings.statistics)),
+              const NavigationRailDestination(icon: Icon(Icons.article), label: Text(DashboardStrings.logs)),
               NavigationRailDestination(icon: Icon(Icons.settings), label: Text(context.l10n.settings)),
             ],
           ),
@@ -81,7 +82,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 children: <Widget>[
                   Row(
                     children: <Widget>[
-                      Text('Game Helper Platform', style: Theme.of(context).textTheme.headlineMedium),
+                      Text(DashboardStrings.platformTitle, style: Theme.of(context).textTheme.headlineMedium),
                       const Spacer(),
                       Text(context.l10n.deviceSessions),
                     ],
@@ -150,22 +151,22 @@ class _AdbStatusPanel extends StatelessWidget {
                 children: <Widget>[
                   Row(
                     children: <Widget>[
-                      Text('ADB Status', style: Theme.of(context).textTheme.titleLarge),
+                      Text(DashboardStrings.adbStatus, style: Theme.of(context).textTheme.titleLarge),
                       const SizedBox(width: 12),
-                      _StatusBadge(label: snapshot.statusLabel, color: _adbColor(snapshot.status)),
+                      _StatusBadge(label: DashboardStrings.adbStatusLabel(snapshot.status), color: _adbColor(snapshot.status)),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  _InfoRow(label: 'Version', value: snapshot.version ?? context.l10n.unknown),
-                  _InfoRow(label: 'Connected Devices', value: snapshot.connectedDevices.toString()),
-                  _InfoRow(label: 'Executable Path', value: snapshot.path ?? context.l10n.notDiscovered),
+                  _InfoRow(label: DashboardStrings.version, value: snapshot.version ?? context.l10n.unknown),
+                  _InfoRow(label: DashboardStrings.connectedDevices, value: snapshot.connectedDevices.toString()),
+                  _InfoRow(label: DashboardStrings.executablePath, value: snapshot.path ?? context.l10n.notDiscovered),
                   _InfoRow(
-                    label: 'Last Scan',
+                    label: DashboardStrings.lastScan,
                     value: lastValidation == null ? context.l10n.never : lastValidation.toLocal().toString().split('.').first,
                   ),
                   if (message != null) ...<Widget>[
                     const SizedBox(height: 8),
-                    Text(message, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                    Text(DashboardStrings.adbMessage(message), style: TextStyle(color: Theme.of(context).colorScheme.error)),
                   ],
                 ],
               ),
@@ -179,11 +180,11 @@ class _AdbStatusPanel extends StatelessWidget {
                 OutlinedButton.icon(
                   onPressed: controller.detecting ? null : controller.initializeDesktopConsole,
                   icon: const Icon(Icons.refresh),
-                  label: Text(controller.detecting ? context.l10n.detecting : 'Rescan ADB'),
+                  label: Text(controller.detecting ? context.l10n.detecting : DashboardStrings.rescanAdb),
                 ),
                 StartButton(onPressed: controller.running || controller.sessions.isEmpty ? null : controller.start),
-                OutlinedButton.icon(onPressed: null, icon: const Icon(Icons.stop), label: const Text('Stop All')),
-                OutlinedButton.icon(onPressed: null, icon: const Icon(Icons.restart_alt), label: const Text('Restart All')),
+                OutlinedButton.icon(onPressed: null, icon: const Icon(Icons.stop), label: const Text(DashboardStrings.stopAll)),
+                OutlinedButton.icon(onPressed: null, icon: const Icon(Icons.restart_alt), label: const Text(DashboardStrings.restartAll)),
               ],
             ),
           ],
@@ -273,7 +274,7 @@ class _DeviceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final DeviceScreenshot? screenshot = controller.screenshotRepository.latest(session.device.id);
     final String pluginName = session.plugin?.displayName ?? '未指定';
-    final String pluginVersion = session.plugin?.version ?? 'N/A';
+    final String pluginVersion = session.plugin?.version ?? DashboardStrings.na;
     final String characterLevel = session.character.level == null ? '' : ' / ${session.character.level}';
 
     return Card(
@@ -304,8 +305,8 @@ class _DeviceCard extends StatelessWidget {
               runSpacing: 8,
               children: <Widget>[
                 _AutomationStatusBadge(state: session.state),
-                _StatusBadge(label: session.device.isOnline ? 'ADB Connected' : 'ADB ${session.device.status.name}', color: session.device.isOnline ? RuntimeStateColors.running : RuntimeStateColors.error),
-                _StatusBadge(label: screenshot == null ? 'Screenshot Missing' : 'Screenshot Ready', color: screenshot == null ? RuntimeStateColors.error : RuntimeStateColors.running),
+                _StatusBadge(label: session.device.isOnline ? DashboardStrings.adbConnected : DashboardStrings.adbStatusLabel(AdbRuntimeStatus.noDevice), color: session.device.isOnline ? RuntimeStateColors.running : RuntimeStateColors.error),
+                _StatusBadge(label: screenshot == null ? DashboardStrings.screenshotMissing : DashboardStrings.screenshotReady, color: screenshot == null ? RuntimeStateColors.error : RuntimeStateColors.running),
               ],
             ),
             const SizedBox(height: 12),
@@ -346,11 +347,11 @@ class _DeviceCard extends StatelessWidget {
     final String? name = await showDialog<String>(
       context: context,
       builder: (BuildContext dialogContext) => AlertDialog(
-        title: const Text('Device Name'),
+        title: const Text(DashboardStrings.deviceName),
         content: TextField(
           controller: textController,
           autofocus: true,
-          decoration: const InputDecoration(hintText: 'Device #1'),
+          decoration: const InputDecoration(hintText: DashboardStrings.deviceNameHint),
         ),
         actions: <Widget>[
           TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(context.l10n.cancel)),
@@ -375,11 +376,11 @@ class _DeviceCard extends StatelessWidget {
             byCategory.putIfAbsent(action.category, () => <AutomationActionDefinition>[]).add(action);
           }
           return AlertDialog(
-            title: Text('${session.plugin?.displayName ?? '未指定'}\nAutomation Logic'),
+            title: Text('${session.plugin?.displayName ?? '未指定'}\n${DashboardStrings.taskLogic}'),
             content: SizedBox(
               width: 420,
               child: actions.isEmpty
-                  ? const Text('目前 Plugin 尚未提供 Automation Actions。')
+                  ? const Text(DashboardStrings.noAutomationActions)
                   : SingleChildScrollView(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -399,7 +400,7 @@ class _DeviceCard extends StatelessWidget {
                               ),
                             const SizedBox(height: 8),
                           ],
-                          Text('Priority', style: Theme.of(context).textTheme.titleMedium),
+                          Text(DashboardStrings.priority, style: Theme.of(context).textTheme.titleMedium),
                           const Divider(),
                           for (final actionId in draft.priorityOrder)
                             if (actions.any((AutomationActionDefinition action) => action.id == actionId))
@@ -411,14 +412,14 @@ class _DeviceCard extends StatelessWidget {
                                 trailing: Wrap(
                                   children: <Widget>[
                                     IconButton(
-                                      tooltip: 'Move up',
+                                      tooltip: DashboardStrings.moveUp,
                                       onPressed: draft.priorityOrder.indexOf(actionId) == 0
                                           ? null
                                           : () => setDialogState(() => draft = draft.reorder(actionId, draft.priorityOrder.indexOf(actionId) - 1)),
                                       icon: const Icon(Icons.arrow_upward),
                                     ),
                                     IconButton(
-                                      tooltip: 'Move down',
+                                      tooltip: DashboardStrings.moveDown,
                                       onPressed: draft.priorityOrder.indexOf(actionId) == draft.priorityOrder.length - 1
                                           ? null
                                           : () => setDialogState(() => draft = draft.reorder(actionId, draft.priorityOrder.indexOf(actionId) + 1)),
@@ -432,8 +433,8 @@ class _DeviceCard extends StatelessWidget {
                     ),
             ),
             actions: <Widget>[
-              TextButton(onPressed: () => setDialogState(() => draft = draft.setAll(actions, true)), child: const Text('全部勾選')),
-              TextButton(onPressed: () => setDialogState(() => draft = draft.setAll(actions, false)), child: const Text('全部取消')),
+              TextButton(onPressed: () => setDialogState(() => draft = draft.setAll(actions, true)), child: const Text(DashboardStrings.selectAll)),
+              TextButton(onPressed: () => setDialogState(() => draft = draft.setAll(actions, false)), child: const Text(DashboardStrings.clearAll)),
               TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(context.l10n.cancel)),
               FilledButton(onPressed: () => Navigator.of(dialogContext).pop(draft), child: Text(context.l10n.save)),
             ],
@@ -449,23 +450,23 @@ class _DeviceCard extends StatelessWidget {
     await showDialog<void>(
       context: context,
       builder: (BuildContext dialogContext) => AlertDialog(
-        title: const Text('⚙ Plugin Settings'),
+        title: const Text(DashboardStrings.settingsWithIcon),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('Plugin Internal Name  ${plugin?.name ?? 'N/A'}'),
-            Text('Plugin Version  ${plugin?.version ?? 'N/A'}'),
-            Text('Plugin Author  ${plugin?.author ?? 'N/A'}'),
-            Text('Plugin Log  See Runtime Logs'),
-            const Text('Debug  Enabled from dashboard actions'),
-            const Text('Reload Plugin  Coming soon'),
-            const Text('OCR Test  Coming soon'),
-            const Text('Image Test  Coming soon'),
+            Text('${DashboardStrings.internalName}  ${plugin?.name ?? DashboardStrings.na}'),
+            Text('${DashboardStrings.pluginVersion}  ${plugin?.version ?? DashboardStrings.na}'),
+            Text('${DashboardStrings.author}  ${plugin?.author ?? DashboardStrings.na}'),
+            Text('${DashboardStrings.pluginLog}  ${DashboardStrings.seeRuntimeLogs}'),
+            Text('${DashboardStrings.debug}  ${DashboardStrings.enabledFromDashboard}'),
+            Text('${DashboardStrings.reloadPlugin}  ${DashboardStrings.comingSoon}'),
+            Text('${DashboardStrings.ocrTest}  ${DashboardStrings.comingSoon}'),
+            Text('${DashboardStrings.imageTest}  ${DashboardStrings.comingSoon}'),
           ],
         ),
         actions: <Widget>[
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Close')),
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text(DashboardStrings.close)),
         ],
       ),
     );
@@ -475,29 +476,29 @@ class _DeviceCard extends StatelessWidget {
     await showDialog<void>(
       context: context,
       builder: (BuildContext dialogContext) => AlertDialog(
-        title: const Text('裝置資訊'),
+        title: const Text(DashboardStrings.deviceInfo),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              _InfoRow(label: 'Android Version', value: session.device.androidVersion),
-              _InfoRow(label: 'Resolution', value: session.device.resolution),
-              _InfoRow(label: 'Brand', value: session.device.manufacturer),
-              _InfoRow(label: 'Model', value: session.device.model),
-              _InfoRow(label: 'Serial', value: session.device.id),
-              _InfoRow(label: 'ADB Status', value: session.device.isOnline ? '🟢 Connected' : '🔴 ${session.device.status.name}'),
-              _InfoRow(label: 'Screenshot', value: screenshot == null ? '🔴 Capture Failed' : '🟢 Ready'),
-              const _InfoRow(label: 'CPU', value: 'N/A'),
-              const _InfoRow(label: 'Memory', value: 'N/A'),
-              _InfoRow(label: 'Plugin Version', value: session.plugin?.version ?? 'N/A'),
-              _InfoRow(label: 'Last Capture', value: screenshot?.updatedAt.toLocal().toString().split('.').first ?? context.l10n.never),
-              _InfoRow(label: 'Image Size', value: screenshot?.sizeLabel ?? 'Unknown'),
+              _InfoRow(label: DashboardStrings.androidVersion, value: session.device.androidVersion),
+              _InfoRow(label: DashboardStrings.resolution, value: session.device.resolution),
+              _InfoRow(label: DashboardStrings.brand, value: session.device.manufacturer),
+              _InfoRow(label: DashboardStrings.model, value: session.device.model),
+              _InfoRow(label: DashboardStrings.serial, value: session.device.id),
+              _InfoRow(label: DashboardStrings.adbStatus, value: session.device.isOnline ? '🟢 ${DashboardStrings.adbConnected}' : '🔴 ${session.device.status.name}'),
+              _InfoRow(label: DashboardStrings.screenshot, value: screenshot == null ? '🔴 ${DashboardStrings.captureFailed}' : '🟢 ${DashboardStrings.ready}'),
+              const _InfoRow(label: DashboardStrings.cpu, value: DashboardStrings.na),
+              const _InfoRow(label: DashboardStrings.memory, value: DashboardStrings.na),
+              _InfoRow(label: DashboardStrings.pluginVersion, value: session.plugin?.version ?? DashboardStrings.na),
+              _InfoRow(label: DashboardStrings.lastCapture, value: screenshot?.updatedAt.toLocal().toString().split('.').first ?? context.l10n.never),
+              _InfoRow(label: DashboardStrings.imageSize, value: screenshot?.sizeLabel ?? DashboardStrings.unknown),
             ],
           ),
         ),
         actions: <Widget>[
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Close')),
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text(DashboardStrings.close)),
         ],
       ),
     );
@@ -551,15 +552,15 @@ class _EmulatorSessionHeader extends StatelessWidget {
                   spacing: 12,
                   runSpacing: 4,
                   children: <Widget>[
-                    Text('Device ID: ${session.device.id}', style: Theme.of(context).textTheme.bodySmall),
-                    Text('Resolution: ${session.device.resolution}', style: Theme.of(context).textTheme.bodySmall),
-                    Text('Android: ${session.device.androidVersion}', style: Theme.of(context).textTheme.bodySmall),
+                    Text('${DashboardStrings.deviceId}: ${session.device.id}', style: Theme.of(context).textTheme.bodySmall),
+                    Text('${DashboardStrings.resolution}: ${session.device.resolution}', style: Theme.of(context).textTheme.bodySmall),
+                    Text('${DashboardStrings.androidVersion}: ${session.device.androidVersion}', style: Theme.of(context).textTheme.bodySmall),
                   ],
                 ),
               ],
             ),
           ),
-          IconButton(tooltip: 'Rename device', onPressed: onRename, icon: const Icon(Icons.edit_outlined)),
+          IconButton(tooltip: DashboardStrings.renameDevice, onPressed: onRename, icon: const Icon(Icons.edit_outlined)),
         ],
       ),
     );
@@ -574,21 +575,21 @@ class _RuntimeMonitor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (session.startedAt == null && session.state == AutomationState.idle) {
-      return const _SectionCard(title: 'Runtime', child: Text('Automation has not started.\nPress Start Automation to begin.'));
+      return const _SectionCard(title: DashboardStrings.runtime, child: Text(DashboardStrings.automationNotStarted));
     }
     final DateTime? startedAt = session.startedAt;
     final runtime = startedAt == null ? '--' : DateTime.now().difference(startedAt).toString().split('.').first;
     return _SectionCard(
-      title: 'Runtime',
+      title: DashboardStrings.runtime,
       trailing: _AutomationStatusBadge(state: session.state),
       child: Wrap(
         spacing: 12,
         runSpacing: 12,
         children: <Widget>[
-          _RuntimeInfoBlock(label: 'Current Task', value: _fallbackText(session.currentStep, 'No Active Task')),
-          _RuntimeInfoBlock(label: 'Next Task', value: _fallbackText(session.nextStep, 'No Active Task')),
-          _RuntimeInfoBlock(label: 'Current Scene', value: _fallbackText(session.currentScene, 'Unknown')),
-          _RuntimeInfoBlock(label: 'Elapsed Time', value: runtime),
+          _RuntimeInfoBlock(label: DashboardStrings.currentTask, value: _localizedRuntimeValue(_fallbackText(session.currentStep, DashboardStrings.noActiveTask))),
+          _RuntimeInfoBlock(label: DashboardStrings.nextTask, value: _localizedRuntimeValue(_fallbackText(session.nextStep, DashboardStrings.noActiveTask))),
+          _RuntimeInfoBlock(label: DashboardStrings.currentScene, value: _localizedRuntimeValue(_fallbackText(session.currentScene, DashboardStrings.unknown))),
+          _RuntimeInfoBlock(label: DashboardStrings.elapsedTime, value: runtime),
         ],
       ),
     );
@@ -616,18 +617,18 @@ class _RuntimeErrorPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (session.state != AutomationState.failed) {
-      return const _SectionCard(title: 'Automation Error', child: Text('No Runtime Errors'));
+      return const _SectionCard(title: DashboardStrings.automationError, child: Text(DashboardStrings.noRuntimeErrors));
     }
     final timestamp = DateTime.now().toLocal().toString().split(' ').last.split('.').first;
     return _SectionCard(
-      title: 'Automation Error',
+      title: DashboardStrings.automationError,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
         Text(session.currentStep, style: Theme.of(context).textTheme.titleSmall?.copyWith(color: RuntimeStateColors.error)),
         const SizedBox(height: 8),
-        const _InfoRow(label: 'Reason', value: 'Runtime reported failure'),
-        const _InfoRow(label: 'Retry Count', value: 'N/A'),
-        _InfoRow(label: 'Last Action', value: session.currentStep),
-        _InfoRow(label: 'Timestamp', value: timestamp),
+        const _InfoRow(label: DashboardStrings.reason, value: DashboardStrings.runtimeReportedFailure),
+        const _InfoRow(label: DashboardStrings.retryCount, value: DashboardStrings.na),
+        _InfoRow(label: DashboardStrings.lastAction, value: session.currentStep),
+        _InfoRow(label: DashboardStrings.timestamp, value: timestamp),
       ]),
     );
   }
@@ -643,11 +644,11 @@ class _AutomationProgress extends StatelessWidget {
     final completed = session.state == AutomationState.completed ? total : 0;
     final value = total == 0 ? 0.0 : completed / total;
     return _SectionCard(
-      title: "Today's Progress",
+      title: DashboardStrings.todaysProgress,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
         LinearProgressIndicator(value: value, minHeight: 10),
         const SizedBox(height: 8),
-        Text('$completed / $total Tasks'),
+        Text('${DashboardStrings.completed} $completed / $total'),
         Text('${(value * 100).round()}%'),
       ]),
     );
@@ -656,6 +657,14 @@ class _AutomationProgress extends StatelessWidget {
 
 String _fallbackText(String value, String fallback) => value.trim().isEmpty ? fallback : value;
 
+String _localizedRuntimeValue(String value) => switch (value) {
+      'Waiting' => DashboardStrings.automationState(AutomationState.stopped),
+      'Unknown' => DashboardStrings.unknown,
+      'Completed' => DashboardStrings.completed,
+      'Error' => DashboardStrings.automationState(AutomationState.failed),
+      _ => value,
+    };
+
 class _ScreenshotSection extends StatelessWidget {
   const _ScreenshotSection({required this.screenshot, required this.onRefresh});
   final DeviceScreenshot? screenshot;
@@ -663,7 +672,7 @@ class _ScreenshotSection extends StatelessWidget {
   void _openViewer(BuildContext context) {
     final DeviceScreenshot? validScreenshot = _validScreenshotOrNull(screenshot);
     if (validScreenshot == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to load screenshot.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text(DashboardStrings.unableToLoadScreenshot)));
       return;
     }
     showDialog<void>(
@@ -678,7 +687,7 @@ class _ScreenshotSection extends StatelessWidget {
                 padding: const EdgeInsets.all(12),
                 child: Row(
                   children: <Widget>[
-                    Text('Screenshot Viewer', style: Theme.of(context).textTheme.titleLarge),
+                    Text(DashboardStrings.screenshotViewer, style: Theme.of(context).textTheme.titleLarge),
                     const Spacer(),
                     IconButton(onPressed: () => Navigator.of(dialogContext).pop(), icon: const Icon(Icons.close)),
                   ],
@@ -697,15 +706,15 @@ class _ScreenshotSection extends StatelessWidget {
     final DeviceScreenshot? validScreenshot = _validScreenshotOrNull(screenshot);
     final time = validScreenshot == null ? context.l10n.never : validScreenshot.updatedAt.toLocal().toString().split(' ').last.split('.').first;
     return _SectionCard(
-      title: 'Screenshot',
+      title: DashboardStrings.screenshot,
       trailing: Text(time, style: Theme.of(context).textTheme.bodySmall),
       child: Column(children: <Widget>[
         _ScreenshotPreview(screenshot: screenshot),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 8, children: <Widget>[
-          OutlinedButton(onPressed: onRefresh, child: const Text('Refresh')),
-          OutlinedButton(onPressed: validScreenshot == null ? null : () => _openViewer(context), child: const Text('Open Viewer')),
-          const OutlinedButton(onPressed: null, child: Text('Save')),
+          OutlinedButton(onPressed: onRefresh, child: const Text(DashboardStrings.refreshScreenshot)),
+          OutlinedButton(onPressed: validScreenshot == null ? null : () => _openViewer(context), child: const Text(DashboardStrings.viewOriginal)),
+          const OutlinedButton(onPressed: null, child: Text(DashboardStrings.saveImage)),
         ]),
       ]),
     );
@@ -746,7 +755,7 @@ DeviceScreenshot? _validScreenshotOrNull(DeviceScreenshot? screenshot) {
   return screenshot;
 }
 
-Widget _imageErrorBuilder(BuildContext context, Object error, StackTrace? stackTrace) => const _ScreenshotPlaceholder(label: 'Screenshot Failed');
+Widget _imageErrorBuilder(BuildContext context, Object error, StackTrace? stackTrace) => const _ScreenshotPlaceholder(label: DashboardStrings.screenshotFailed);
 
 class _ScreenshotPlaceholder extends StatelessWidget {
   const _ScreenshotPlaceholder({required this.label});
@@ -776,9 +785,9 @@ class _RuntimeTimeline extends StatelessWidget {
   final List<String> events;
   @override
   Widget build(BuildContext context) => _SectionCard(
-        title: 'Recent Events',
+        title: DashboardStrings.recentEvents,
         child: events.isEmpty
-            ? const Text('No recent events')
+            ? const Text(DashboardStrings.noRecentEvents)
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: events.take(20).map((String event) => Padding(
@@ -796,11 +805,11 @@ class _ReservedRuntimeSections extends StatelessWidget {
         spacing: 8,
         runSpacing: 8,
         children: const <Widget>[
-          _PlaceholderExpansion(title: 'Performance'),
-          _PlaceholderExpansion(title: 'OCR'),
-          _PlaceholderExpansion(title: 'Memory'),
-          _PlaceholderExpansion(title: 'Plugin Status'),
-          _PlaceholderExpansion(title: 'Statistics'),
+          _PlaceholderExpansion(title: DashboardStrings.performance),
+          _PlaceholderExpansion(title: DashboardStrings.ocr),
+          _PlaceholderExpansion(title: DashboardStrings.memory),
+          _PlaceholderExpansion(title: DashboardStrings.pluginStatus),
+          _PlaceholderExpansion(title: DashboardStrings.statistics),
         ],
       );
 }
@@ -811,7 +820,7 @@ class _PlaceholderExpansion extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(
         width: 220,
-        child: ExpansionTile(title: Text(title), initiallyExpanded: false, children: const <Widget>[Padding(padding: EdgeInsets.all(8), child: Text('Reserved for future platform diagnostics.'))]),
+        child: ExpansionTile(title: Text(title), initiallyExpanded: false, children: const <Widget>[Padding(padding: EdgeInsets.all(8), child: Text(DashboardStrings.reservedDiagnostics))]),
       );
 }
 
@@ -872,9 +881,9 @@ class _AutomationDebugPanelState extends State<_AutomationDebugPanel> {
             child: Row(
               children: <Widget>[
                 Icon(_expanded ? Icons.expand_more : Icons.chevron_right),
-                Text('Automation Debug', style: Theme.of(context).textTheme.titleMedium),
+                Text(DashboardStrings.automationDebug, style: Theme.of(context).textTheme.titleMedium),
                 const Spacer(),
-                const Text('Debug Mode'),
+                const Text(DashboardStrings.debugMode),
                 Switch(
                   value: controller.debugModeFor(session.device.id),
                   onChanged: (bool value) => controller.toggleDebugMode(session, value),
@@ -888,20 +897,20 @@ class _AutomationDebugPanelState extends State<_AutomationDebugPanel> {
             spacing: 8,
             runSpacing: 8,
             children: <Widget>[
-              OutlinedButton(onPressed: () => controller.detectScene(session), child: const Text('Detect Scene')),
-              OutlinedButton(onPressed: () => controller.detectGrowStone(session), child: const Text('Detect GrowStone')),
-              OutlinedButton(onPressed: () => controller.testGrowStoneTap(session), child: const Text('Test Tap')),
-              OutlinedButton(onPressed: () => controller.captureScreenshot(session), child: const Text('Screenshot')),
+              OutlinedButton(onPressed: () => controller.detectScene(session), child: const Text(DashboardStrings.detectScene)),
+              OutlinedButton(onPressed: () => controller.detectGrowStone(session), child: const Text(DashboardStrings.detectGrowStone)),
+              OutlinedButton(onPressed: () => controller.testGrowStoneTap(session), child: const Text(DashboardStrings.testTap)),
+              OutlinedButton(onPressed: () => controller.captureScreenshot(session), child: const Text(DashboardStrings.screenshot)),
             ],
           ),
           const SizedBox(height: 8),
-          _InfoRow(label: 'Current Scene', value: _formatScene(scene)),
-          _InfoRow(label: 'Found', value: growStone == null ? 'N/A' : (growStone.found ? 'YES' : 'NO')),
-          _InfoRow(label: 'Confidence', value: growStone?.confidence?.toStringAsFixed(2) ?? 'N/A'),
-          _InfoRow(label: 'Left', value: rect?.left.toStringAsFixed(0) ?? 'N/A'),
-          _InfoRow(label: 'Top', value: rect?.top.toStringAsFixed(0) ?? 'N/A'),
-          _InfoRow(label: 'Right', value: rect?.right.toStringAsFixed(0) ?? 'N/A'),
-            _InfoRow(label: 'Bottom', value: rect?.bottom.toStringAsFixed(0) ?? 'N/A'),
+          _InfoRow(label: DashboardStrings.currentScene, value: _formatScene(scene)),
+          _InfoRow(label: DashboardStrings.found, value: growStone == null ? DashboardStrings.na : (growStone.found ? DashboardStrings.yes : DashboardStrings.no)),
+          _InfoRow(label: DashboardStrings.confidence, value: growStone?.confidence?.toStringAsFixed(2) ?? DashboardStrings.na),
+          _InfoRow(label: DashboardStrings.left, value: rect?.left.toStringAsFixed(0) ?? DashboardStrings.na),
+          _InfoRow(label: DashboardStrings.top, value: rect?.top.toStringAsFixed(0) ?? DashboardStrings.na),
+          _InfoRow(label: DashboardStrings.right, value: rect?.right.toStringAsFixed(0) ?? DashboardStrings.na),
+            _InfoRow(label: DashboardStrings.bottom, value: rect?.bottom.toStringAsFixed(0) ?? DashboardStrings.na),
           ],
         ],
       ),
@@ -909,8 +918,8 @@ class _AutomationDebugPanelState extends State<_AutomationDebugPanel> {
   }
 
   String _formatScene(String scene) {
-    if (scene.isEmpty) return 'Unknown';
-    return scene[0].toUpperCase() + scene.substring(1);
+    if (scene.isEmpty) return DashboardStrings.unknown;
+    return _localizedRuntimeValue(scene);
   }
 }
 
@@ -932,15 +941,15 @@ class _ActionGroups extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: <Widget>[
         _ButtonCluster(children: <Widget>[
-          OutlinedButton(onPressed: () => controller.captureScreenshot(session), child: const Text('ADB Screenshot')),
-          OutlinedButton(onPressed: controller.running ? null : controller.start, child: const Text('開始自動化')),
-          OutlinedButton(onPressed: () => controller.detectCharacter(session), child: const Text('Detect Character')),
-          OutlinedButton(onPressed: onPluginSettings, child: const Text('⚙ Plugin Settings')),
-          OutlinedButton(onPressed: onAutomationLogic, child: const Text('設定運行邏輯')),
+          OutlinedButton(onPressed: () => controller.captureScreenshot(session), child: const Text(DashboardStrings.adbScreenshot)),
+          OutlinedButton(onPressed: controller.running ? null : controller.start, child: const Text(DashboardStrings.startAutomation)),
+          OutlinedButton(onPressed: () => controller.detectCharacter(session), child: const Text(DashboardStrings.detectCharacter)),
+          OutlinedButton(onPressed: onPluginSettings, child: const Text(DashboardStrings.settingsWithIcon)),
+          OutlinedButton(onPressed: onAutomationLogic, child: const Text(DashboardStrings.taskLogic)),
         ]),
         _ButtonCluster(children: <Widget>[
           OutlinedButton(onPressed: () => controller.restartSession(session), child: Text(context.l10n.restartSession)),
-          OutlinedButton(onPressed: onDeviceInfo, child: const Text('裝置資訊')),
+          OutlinedButton(onPressed: onDeviceInfo, child: const Text(DashboardStrings.deviceInfo)),
         ]),
       ],
     );
@@ -973,14 +982,14 @@ class _StatusRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (String label, Color color) = switch (state) {
-      AutomationState.running => ('Running', RuntimeStateColors.running),
-      AutomationState.paused => ('Paused', RuntimeStateColors.paused),
-      AutomationState.completed => ('Completed', RuntimeStateColors.completed),
-      AutomationState.failed => ('Error', RuntimeStateColors.error),
-      AutomationState.stopped => ('Waiting', RuntimeStateColors.waiting),
-      AutomationState.idle => ('Idle', RuntimeStateColors.idle),
+      AutomationState.running => (DashboardStrings.automationState(AutomationState.running), RuntimeStateColors.running),
+      AutomationState.paused => (DashboardStrings.automationState(AutomationState.paused), RuntimeStateColors.paused),
+      AutomationState.completed => (DashboardStrings.automationState(AutomationState.completed), RuntimeStateColors.completed),
+      AutomationState.failed => (DashboardStrings.automationState(AutomationState.failed), RuntimeStateColors.error),
+      AutomationState.stopped => (DashboardStrings.automationState(AutomationState.stopped), RuntimeStateColors.waiting),
+      AutomationState.idle => (DashboardStrings.automationState(AutomationState.idle), RuntimeStateColors.idle),
     };
-    return _InfoRow(label: '目前狀態', value: label, valueColor: color);
+    return _InfoRow(label: DashboardStrings.currentStatus, value: label, valueColor: color);
   }
 }
 
@@ -992,12 +1001,12 @@ class _AutomationStatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (String label, Color color) = switch (state) {
-      AutomationState.failed => ('Automation Error', RuntimeStateColors.error),
-      AutomationState.paused => ('Automation Paused', RuntimeStateColors.paused),
-      AutomationState.running => ('Automation Running', RuntimeStateColors.running),
-      AutomationState.stopped => ('Automation Waiting', RuntimeStateColors.waiting),
-      AutomationState.completed => ('Automation Completed', RuntimeStateColors.completed),
-      AutomationState.idle => ('Automation Idle', RuntimeStateColors.idle),
+      AutomationState.failed => (DashboardStrings.automationError, RuntimeStateColors.error),
+      AutomationState.paused => (DashboardStrings.automationBadge(AutomationState.paused), RuntimeStateColors.paused),
+      AutomationState.running => (DashboardStrings.automationBadge(AutomationState.running), RuntimeStateColors.running),
+      AutomationState.stopped => (DashboardStrings.automationBadge(AutomationState.stopped), RuntimeStateColors.waiting),
+      AutomationState.completed => (DashboardStrings.automationBadge(AutomationState.completed), RuntimeStateColors.completed),
+      AutomationState.idle => (DashboardStrings.automationBadge(AutomationState.idle), RuntimeStateColors.idle),
     };
     return _StatusBadge(label: label, color: color);
   }
@@ -1062,7 +1071,7 @@ class _ScreenshotPreview extends StatelessWidget {
         border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: validScreenshot == null
-          ? const _ScreenshotPlaceholder(label: 'No Screenshot Available')
+          ? const _ScreenshotPlaceholder(label: DashboardStrings.noScreenshotAvailable)
           : InkWell(
               onTap: () => showDialog<void>(
                 context: context,
@@ -1075,9 +1084,9 @@ class _ScreenshotPreview extends StatelessWidget {
                           padding: const EdgeInsets.all(12),
                           child: Row(
                             children: <Widget>[
-                              Text('Screenshot Viewer', style: Theme.of(context).textTheme.titleLarge),
+                              Text(DashboardStrings.screenshotViewer, style: Theme.of(context).textTheme.titleLarge),
                               const Spacer(),
-                              const Text('Zoom / Original Size'),
+                              const Text(DashboardStrings.zoomOriginalSize),
                               IconButton(onPressed: () => Navigator.of(dialogContext).pop(), icon: const Icon(Icons.close)),
                             ],
                           ),
@@ -1094,7 +1103,7 @@ class _ScreenshotPreview extends StatelessWidget {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: <Widget>[
-                              OutlinedButton(onPressed: null, child: Text('Save Screenshot')),
+                              OutlinedButton(onPressed: null, child: Text(DashboardStrings.saveImage)),
                             ],
                           ),
                         ),
